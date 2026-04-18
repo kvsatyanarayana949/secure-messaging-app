@@ -1,0 +1,32 @@
+{
+  "name": "secure-messaging-app-main",
+  "version": "1.0.0",
+  "description": "Sentinel is a secure team-messaging demo built to show product thinking, access-control discipline, and production-minded engineering in one portfolio project.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test:e2e": "playwright test tests/sentinel.e2e.spec.ts --project=chromium",
+    "test:e2e:headed": "playwright test tests/sentinel.e2e.spec.ts --project=chromium --headed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kvsatyanarayana949/secure-messaging-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/kvsatyanarayana949/secure-messaging-app/issues"
+  },
+  "homepage": "https://github.com/kvsatyanarayana949/secure-messaging-app#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "playwright": "^1.59.1"
+  }
+}
+

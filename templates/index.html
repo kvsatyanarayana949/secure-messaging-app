@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel | Secure Team Messaging</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    darkMode: ["class", '[data-theme="dark"]'],
+    theme: {
+        extend: {
+            colors: {
+                ink: "#071016",
+                steel: "#0d1b24",
+                veil: "#eff7f8",
+                pulse: "#00e5ff"
+            },
+            fontFamily: {
+                sans: ["Satoshi", "sans-serif"],
+                display: ["Cabinet Grotesk", "sans-serif"]
+            },
+            boxShadow: {
+                glow: "0 24px 90px rgba(0,229,255,.25)",
+                soft: "0 30px 80px rgba(7,16,22,.16)"
+            }
+        }
+    }
+};
+</script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+:root {
+    color-scheme: light;
+    --page: #eef5f6;
+    --text: #071016;
+    --muted: #587078;
+    --card: rgba(255,255,255,.74);
+    --line: rgba(7,16,22,.12);
+    --beam: rgba(0,229,255,.36);
+}
+[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #071016;
+    --text: #eefbff;
+    --muted: #8fafb8;
+    --card: rgba(12,26,35,.72);
+    --line: rgba(196,244,255,.14);
+    --beam: rgba(0,229,255,.28);
+}
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    font-family: "Satoshi", sans-serif;
+    background:
+        radial-gradient(circle at 10% 8%, var(--beam), transparent 24rem),
+        radial-gradient(circle at 90% 18%, rgba(118,80,255,.18), transparent 22rem),
+        linear-gradient(135deg, var(--page), color-mix(in srgb, var(--page) 88%, #00e5ff 12%));
+}
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .28;
+    background-image:
+        linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: linear-gradient(to bottom, #000, transparent 82%);
+}
+.glass {
+    border: 1px solid var(--line);
+    background: var(--card);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 24px 80px rgba(7,16,22,.16);
+}
+.gradient-text {
+    background: linear-gradient(120deg, var(--text), #00e5ff 46%, #8ef5ff 70%);
+    -webkit-background-clip: text;
+    color: transparent;
+}
+.orb {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(12px);
+    opacity: .78;
+}
+.focus-ring:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(0,229,255,.22);
+    border-color: rgba(0,229,255,.72);
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script id="bootstrap-data" type="application/json">
+{{ {
+    "canViewMessages": can_view_messages,
+    "currentUser": current_user,
+    "currentRole": current_role,
+    "messages": messages
+}|tojson }}
+</script>
+<script>
+const e = React.createElement;
+const { useEffect, useMemo, useRef, useState } = React;
+const bootstrap = JSON.parse(document.getElementById("bootstrap-data").textContent || "{}");
+const motionSource = (window.Motion && window.Motion.motion) || (window.framerMotion && window.framerMotion.motion);
+const hasMotion = Boolean(motionSource);
+const Motion = {
+    div: hasMotion ? motionSource.div : "div",
+    article: hasMotion ? motionSource.article : "article",
+    section: hasMotion ? motionSource.section : "section",
+    button: hasMotion ? motionSource.button : "button"
+};
+const motionProps = (props) => hasMotion ? props : {};
+
+let csrfToken = document.querySelector("meta[name='csrf-token']")?.content || "";
+
+function cx(...classes) {
+    return classes.filter(Boolean).join(" ");
+}
+
+async function parseJson(response) {
+    try {
+        return await response.json();
+    } catch (_error) {
+        return {};
+    }
+}
+
+async function refreshCsrfToken() {
+    const response = await fetch("/csrf-token", {
+        method: "GET",
+        credentials: "include",
+        headers: { "Accept": "application/json" }
+    });
+    const payload = await parseJson(response);
+    if (!response.ok || !payload.csrf_token) {
+        throw new Error(payload.message || "Could not refresh the secure form token");
+    }
+    csrfToken = payload.csrf_token;
+    const meta = document.querySelector("meta[name='csrf-token']");
+    if (meta) {
+        meta.setAttribute("content", csrfToken);
+    }
+    return csrfToken;
+}
+
+async function postForm(url, data = {}, retryOnCsrf = true) {
+    const body = new URLSearchParams();
+    Object.entries({ ...data, csrf_token: csrfToken }).forEach(([key, value]) => {
+        body.append(key, value ?? "");
+    });
+
+    const response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-CSRFToken": csrfToken,
+            "X-CSRF-Token": csrfToken
+        },
+        body
+    });
+
+    const payload = await parseJson(response);
+    if (!response.ok) {
+        if (retryOnCsrf && response.status === 400 && payload.csrf_refresh_required) {
+            await refreshCsrfToken();
+            return postForm(url, data, false);
+        }
+        throw new Error(payload.message || "Request failed");
+    }
+    return payload;
+}
+
+function Button({ children, variant = "primary", className = "", ...props }) {
+    const variants = {
+        primary: "bg-pulse text-ink shadow-glow hover:bg-cyan-200",
+        secondary: "bg-white/10 text-[var(--text)] ring-1 ring-[var(--line)] hover:bg-white/16",
+        quiet: "text-[var(--muted)] hover:text-[var(--text)]"
+    };
+    return e(
+        Motion.button,
+        {
+            ...motionProps({ whileHover: { scale: 1.025, y: -1 }, whileTap: { scale: .98 } }),
+            ...props,
+            className: cx(
+                "inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm font-black tracking-tight transition duration-200 disabled:pointer-events-none disabled:opacity-55",
+                variants[variant],
+                className
+            )
+        },
+        children
+    );
+}
+
+function Field({ id, label, type = "text", value, onChange, autoComplete, hidden = false }) {
+    if (hidden) {
+        return null;
+    }
+    return e(
+        "label",
+        { className: "group relative block" },
+        e("input", {
+            id,
+            type,
+            value,
+            onChange: (event) => onChange(event.target.value),
+            autoComplete,
+            placeholder: " ",
+            className: "peer focus-ring h-16 w-full rounded-2xl border border-[var(--line)] bg-white/70 px-4 pt-5 text-base font-bold text-slate-950 transition dark:bg-white/8 dark:text-white"
+        }),
+        e(
+            "span",
+            { className: "pointer-events-none absolute left-4 top-3 text-xs font-black uppercase tracking-[.18em] text-slate-500 transition peer-placeholder-shown:top-5 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-3 peer-focus:text-xs peer-focus:tracking-[.18em] dark:text-cyan-100/60" },
+            label
+        )
+    );
+}
+
+function StatusPill({ children, tone = "neutral" }) {
+    const toneClass = tone === "good"
+        ? "border-pulse/30 bg-pulse/10 text-cyan-950 dark:text-cyan-100"
+        : tone === "danger"
+            ? "border-rose-400/30 bg-rose-400/10 text-rose-700 dark:text-rose-200"
+            : "border-[var(--line)] bg-white/10 text-[var(--muted)]";
+    return e("div", { className: cx("rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[.16em]", toneClass) }, children);
+}
+
+function MetricCard({ label, value, detail }) {
+    return e(
+        Motion.div,
+        {
+            ...motionProps({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: .45 } }),
+            className: "glass rounded-[2rem] p-5"
+        },
+        e("p", { className: "text-xs font-black uppercase tracking-[.18em] text-[var(--muted)]" }, label),
+        e("div", { className: "mt-3 font-display text-3xl font-black" }, value),
+        e("p", { className: "mt-2 text-sm text-[var(--muted)]" }, detail)
+    );
+}
+
+function MessageCard({ entry }) {
+    const username = entry.username || "member";
+    return e(
+        Motion.article,
+        {
+            ...motionProps({ initial: { opacity: 0, x: -12 }, animate: { opacity: 1, x: 0 }, transition: { duration: .25 } }),
+            className: "group rounded-[1.6rem] border border-[var(--line)] bg-white/74 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:bg-white/8"
+        },
+        e("div", { className: "flex gap-3" },
+            e("div", { className: "grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pulse font-black text-ink shadow-glow" }, username.slice(0, 1).toUpperCase()),
+            e("div", { className: "min-w-0 flex-1" },
+                e("div", { className: "flex flex-wrap items-center gap-2" },
+                    e("span", { className: "font-black" }, username),
+                    e("span", { className: "text-xs text-[var(--muted)]" }, entry.created_at || "just now")
+                ),
+                e("p", { className: "mt-2 leading-7 text-[var(--text)]" }, entry.message)
+            )
+        )
+    );
+}
+
+function ProductPreview({ messages, isMember, query, setQuery }) {
+    const previewMessages = messages.length ? messages : [
+        { username: "maya", message: "Shift handoff is complete. Security checklist is green.", created_at: "09:41" },
+        { username: "arun", message: "Need approval on vendor access before 11:00.", created_at: "09:38" },
+        { username: "nora", message: "Admin moderation is isolated from private messages.", created_at: "09:31" }
+    ];
+    const filteredMessages = previewMessages.filter((entry) => {
+        const haystack = `${entry.username || ""} ${entry.message || ""}`.toLowerCase();
+        return !query || haystack.includes(query.toLowerCase());
+    });
+
+    return e(
+        "section",
+        { className: "glass relative overflow-hidden rounded-[2.4rem] p-4 sm:p-5" },
+        e("div", { className: "orb right-10 top-8 h-24 w-24 bg-pulse/30" }),
+        e("div", { className: "relative rounded-[2rem] border border-[var(--line)] bg-ink p-4 text-white shadow-2xl dark:bg-black/30" },
+            e("div", { className: "flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4" },
+                e("div", null,
+                    e("p", { className: "text-xs font-black uppercase tracking-[.18em] text-cyan-200/70" }, isMember ? "Live secure channel" : "Product preview"),
+                    e("h3", { className: "font-display text-2xl font-black" }, isMember ? "Member command stream" : "Private workspace preview")
+                ),
+                isMember
+                    ? e("input", {
+                        id: "messageSearch",
+                        value: query,
+                        onChange: (event) => setQuery(event.target.value),
+                        placeholder: "Search messages",
+                        className: "focus-ring h-11 w-full rounded-full border border-white/10 bg-white/10 px-4 text-sm font-bold text-white placeholder:text-white/45 sm:w-56"
+                    })
+                    : e(StatusPill, { tone: "good" }, "Live demo ready")
+            ),
+            e("div", { id: "messages", className: "mt-4 grid max-h-[25rem] gap-3 overflow-auto pr-1" },
+                filteredMessages.length
+                    ? filteredMessages.map((entry, index) => e(MessageCard, { key: `${entry.username}-${index}-${entry.message}`, entry }))
+                    : e("div", { className: "rounded-3xl border border-dashed border-white/20 p-6 text-sm text-white/60" }, "No messages match that search.")
+            ),
+            e("div", { className: "mt-4 flex items-center gap-3 rounded-full border border-white/10 bg-white/8 px-4 py-3 text-sm text-white/60" },
+                e("span", { className: "h-2 w-2 rounded-full bg-pulse shadow-glow" }),
+                e("span", null, isMember ? "Connected members see updates instantly." : "Typing states, search, and role boundaries are built in.")
+            )
+        )
+    );
+}
+
+function AuthPanel({ setStatus }) {
+    const [mode, setMode] = useState("login");
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [busy, setBusy] = useState(false);
+
+    async function handleAuth() {
+        try {
+            setBusy(true);
+            setStatus({ tone: "neutral", message: mode === "login" ? "Checking secure session..." : "Creating member account..." });
+            if (mode === "register") {
+                const result = await postForm("/register", { username, email, password });
+                setStatus({ tone: "good", message: `${result.message}. You can sign in now.` });
+                setMode("login");
+                return;
+            }
+
+            const result = await postForm("/login", { username, password });
+            setStatus({ tone: "good", message: "Login successful. Opening your workspace..." });
+            window.location.href = result.can_manage_members ? "/admin" : "/";
+        } catch (error) {
+            setStatus({ tone: "danger", message: error.message || "Authentication failed" });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return e(
+        Motion.div,
+        {
+            ...motionProps({ initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 }, transition: { duration: .55, delay: .08 } }),
+            id: "auth-panel",
+            className: "glass relative overflow-hidden rounded-[2.2rem] p-5 sm:p-6"
+        },
+        e("div", { className: "orb -right-10 -top-10 h-32 w-32 bg-pulse/30" }),
+        e("div", { className: "relative" },
+            e("div", { className: "mb-5 flex rounded-full border border-[var(--line)] bg-white/40 p-1 dark:bg-white/8" },
+                e("button", {
+                    id: "loginModeBtn",
+                    type: "button",
+                    onClick: () => setMode("login"),
+                    className: cx("h-12 flex-1 rounded-full text-sm font-black transition", mode === "login" ? "bg-pulse text-ink shadow-glow" : "text-[var(--muted)]")
+                }, "Login"),
+                e("button", {
+                    id: "registerModeBtn",
+                    type: "button",
+                    onClick: () => setMode("register"),
+                    className: cx("h-12 flex-1 rounded-full text-sm font-black transition", mode === "register" ? "bg-pulse text-ink shadow-glow" : "text-[var(--muted)]")
+                }, "Register")
+            ),
+            e("div", { className: "space-y-4" },
+                e(Field, { id: "username", label: "Username", value: username, onChange: setUsername, autoComplete: "username" }),
+                e(Field, { id: "email", label: "Email", type: "email", value: email, onChange: setEmail, autoComplete: "email", hidden: mode !== "register" }),
+                e(Field, { id: "password", label: "Password", type: "password", value: password, onChange: setPassword, autoComplete: mode === "register" ? "new-password" : "current-password" })
+            ),
+            e(Button, {
+                id: "submitAuthBtn",
+                type: "button",
+                onClick: handleAuth,
+                disabled: busy,
+                className: "mt-5 w-full"
+            }, busy ? "Working..." : mode === "register" ? "Create Secure Account" : "Enter Workspace"),
+            e("p", { className: "mt-4 text-center text-sm text-[var(--muted)]" }, "Fresh demo admin: admin / AdminPass123!")
+        )
+    );
+}
+
+function MemberComposer({ onSend, onTyping, status }) {
+    const [message, setMessage] = useState("");
+    const [busy, setBusy] = useState(false);
+
+    async function submit() {
+        if (!message.trim()) {
+            status({ tone: "danger", message: "Write a message before sending." });
+            return;
+        }
+        try {
+            setBusy(true);
+            await onSend(message.trim());
+            setMessage("");
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return e(
+        "div",
+        { className: "glass rounded-[2rem] p-3 sm:p-4" },
+        e("div", { className: "flex flex-col gap-3 sm:flex-row" },
+            e("input", {
+                id: "msgInput",
+                value: message,
+                maxLength: 500,
+                onChange: (event) => {
+                    setMessage(event.target.value);
+                    onTyping(true);
+                },
+                onKeyDown: (event) => {
+                    if (event.key === "Enter") {
+                        submit();
+                    }
+                },
+                placeholder: "Send a secure team update...",
+                className: "focus-ring h-14 flex-1 rounded-full border border-[var(--line)] bg-white/70 px-5 font-bold text-slate-950 placeholder:text-slate-400 dark:bg-white/8 dark:text-white"
+            }),
+            e(Button, { id: "sendBtn", type: "button", onClick: submit, disabled: busy }, busy ? "Sending..." : "Send Message")
+        )
+    );
+}
+
+function App() {
+    const [theme, setThemeState] = useState(localStorage.getItem("sentinel-theme") || "dark");
+    const [status, setStatus] = useState({ tone: "neutral", message: bootstrap.canViewMessages ? "Real-time workspace ready." : "Secure preview ready. Sign in to enter the workspace." });
+    const [messages, setMessages] = useState(Array.isArray(bootstrap.messages) ? bootstrap.messages : []);
+    const [query, setQuery] = useState("");
+    const [typingUser, setTypingUser] = useState("");
+    const socketRef = useRef(null);
+    const typingTimer = useRef(null);
+
+    useEffect(() => {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("sentinel-theme", theme);
+    }, [theme]);
+
+    useEffect(() => {
+        if (!bootstrap.canViewMessages || !window.io) {
+            return;
+        }
+        const socket = window.io({ autoConnect: true, transports: ["websocket", "polling"] });
+        socketRef.current = socket;
+        socket.on("connect", () => setStatus({ tone: "good", message: "Real-time channel connected." }));
+        socket.on("system", (data) => setStatus({ tone: "good", message: data.message || "Connected to real-time server." }));
+        socket.on("connect_error", () => setStatus({ tone: "danger", message: "Real-time channel is retrying." }));
+        socket.on("disconnect", () => setStatus({ tone: "danger", message: "Real-time channel disconnected. Reconnecting..." }));
+        socket.on("new_message", (entry) => setMessages((current) => [entry, ...current]));
+        socket.on("typing", (data) => {
+            if (!data?.active) {
+                setTypingUser("");
+                return;
+            }
+            setTypingUser(data.username || "A teammate");
+            window.clearTimeout(typingTimer.current);
+            typingTimer.current = window.setTimeout(() => setTypingUser(""), 1800);
+        });
+        return () => socket.disconnect();
+    }, []);
+
+    function emitTyping(active) {
+        const socket = socketRef.current;
+        if (socket && socket.connected) {
+            socket.emit("typing", { active });
+        }
+    }
+
+    async function sendMessage(message) {
+        try {
+            await postForm("/submit", { new_message: message });
+            emitTyping(false);
+            setStatus({ tone: "good", message: "Message sent to connected members." });
+        } catch (error) {
+            setStatus({ tone: "danger", message: error.message || "Message failed." });
+            throw error;
+        }
+    }
+
+    async function logout() {
+        try {
+            await postForm("/logout");
+            window.location.href = "/";
+        } catch (error) {
+            setStatus({ tone: "danger", message: error.message || "Logout failed." });
+        }
+    }
+
+    const isMember = Boolean(bootstrap.canViewMessages);
+    const statusTone = status.tone === "good" ? "good" : status.tone === "danger" ? "danger" : "neutral";
+
+    return e(
+        "main",
+        { className: "relative mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8" },
+        e("nav", { className: "relative z-10 flex items-center justify-between gap-4 py-3" },
+            e("div", { className: "flex items-center gap-3" },
+                e("div", { className: "grid h-12 w-12 place-items-center rounded-2xl bg-pulse font-display text-xl font-black text-ink shadow-glow" }, "S"),
+                e("div", null,
+                    e("div", { className: "font-display text-xl font-black" }, "Sentinel"),
+                    e("div", { className: "text-xs font-black uppercase tracking-[.2em] text-[var(--muted)]" }, "Private team OS")
+                )
+            ),
+            e("div", { className: "flex items-center gap-2" },
+                e(StatusPill, { tone: isMember ? "good" : "neutral" }, isMember ? `${bootstrap.currentUser} / ${bootstrap.currentRole}` : "Guest"),
+                e(Button, { id: "themeBtn", type: "button", variant: "secondary", onClick: () => setThemeState(theme === "dark" ? "light" : "dark"), className: "px-4" }, theme === "dark" ? "Light" : "Dark"),
+                isMember ? e(Button, { id: "logoutBtn", type: "button", variant: "secondary", onClick: logout, className: "hidden px-4 sm:inline-flex" }, "Logout") : null
+            )
+        ),
+        e(Motion.section, {
+            ...motionProps({ initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 }, transition: { duration: .6 } }),
+            className: "grid gap-8 py-10 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-16"
+        },
+            e("div", { className: "relative" },
+                e("div", { className: "mb-5 inline-flex rounded-full border border-pulse/30 bg-pulse/10 px-4 py-2 text-xs font-black uppercase tracking-[.2em] text-cyan-700 dark:text-cyan-200" }, "Role-safe messaging"),
+                e("h1", { className: "max-w-4xl font-display text-5xl font-black leading-[.9] tracking-[-.06em] sm:text-7xl lg:text-8xl" },
+                    "Secure chat that ",
+                    e("span", { className: "gradient-text" }, "doesn't overtrust admins"),
+                    "."
+                ),
+                e("p", { className: "mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)] sm:text-xl" }, "Members collaborate in real time. Admins moderate access. Private messages stay private by design."),
+                e("div", { className: "mt-8 flex flex-col gap-3 sm:flex-row" },
+                    e(Button, {
+                        type: "button",
+                        onClick: () => document.getElementById(isMember ? "msgInput" : "auth-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                        className: "text-base"
+                    }, isMember ? "Send A Live Update" : "Try Live Demo"),
+                    e(Button, {
+                        type: "button",
+                        variant: "secondary",
+                        onClick: () => document.getElementById("privacy-story")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                        className: "text-base"
+                    }, "View Privacy Model")
+                ),
+                e("div", { className: "mt-8 grid gap-3 sm:grid-cols-3" },
+                    e(MetricCard, { label: "Boundary", value: isMember ? "Member" : "Split", detail: "Chat and moderation are separate." }),
+                    e(MetricCard, { label: "Requests", value: "CSRF", detail: "Fresh-token recovery is built in." }),
+                    e(MetricCard, { label: "Realtime", value: isMember ? "Live" : "Ready", detail: "Socket.IO updates power the stream." })
+                )
+            ),
+            e("div", { className: "space-y-5" },
+                isMember ? null : e(AuthPanel, { setStatus }),
+                e(ProductPreview, { messages, isMember, query, setQuery }),
+                isMember ? e(MemberComposer, { onSend: sendMessage, onTyping: emitTyping, status: setStatus }) : null,
+                isMember && typingUser ? e("div", { id: "typingIndicator", className: "px-2 text-sm font-bold text-[var(--muted)]" }, `${typingUser} is typing...`) : e("div", { id: "typingIndicator", className: "sr-only" })
+            )
+        ),
+        e("section", { id: "privacy-story", className: "grid gap-4 pb-14 md:grid-cols-3" },
+            [
+                ["01", "Moderation without surveillance", "Admins can ban, unban, and review members without entering the message stream."],
+                ["02", "Fast recovery from stale sessions", "The client refreshes CSRF tokens automatically instead of failing silently."],
+                ["03", "Designed for a real demo", "The interface leads with value, then proves it with live chat, search, status, and tests."]
+            ].map(([number, title, body]) => e(
+                Motion.div,
+                {
+                    key: number,
+                    ...motionProps({ whileHover: { y: -6 } }),
+                    className: "glass rounded-[2rem] p-6 transition"
+                },
+                e("div", { className: "mb-8 text-sm font-black text-pulse" }, number),
+                e("h3", { className: "font-display text-2xl font-black" }, title),
+                e("p", { className: "mt-3 leading-7 text-[var(--muted)]" }, body)
+            ))
+        ),
+        e("div", { className: cx("fixed bottom-5 left-1/2 z-50 w-[min(92vw,42rem)] -translate-x-1/2 rounded-full border px-5 py-3 text-center text-sm font-bold shadow-soft backdrop-blur-xl", statusTone === "danger" ? "border-rose-400/30 bg-rose-500/15 text-rose-700 dark:text-rose-100" : statusTone === "good" ? "border-pulse/30 bg-pulse/15 text-cyan-900 dark:text-cyan-50" : "border-[var(--line)] bg-white/70 text-[var(--muted)] dark:bg-ink/80") }, status.message)
+    );
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(e(App));
+</script>
+</body>
+</html>
+
