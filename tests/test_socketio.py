@@ -1,7 +1,15 @@
 import app as app_module
+from sentinel_app.socket_events import disconnect_member_sessions
 
 
-def _member_client(app):
+def _member_client(app, dummy_cursor):
+    dummy_cursor.current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     client = app.test_client()
     with client.session_transaction() as sess:
         sess["user_id"] = 2
@@ -10,7 +18,14 @@ def _member_client(app):
     return client
 
 
-def _admin_client(app):
+def _admin_client(app, dummy_cursor):
+    dummy_cursor.current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     client = app.test_client()
     with client.session_transaction() as sess:
         sess["user_id"] = 1
@@ -33,9 +48,9 @@ def test_socketio_connect_emits_system_message(app, socketio_client):
     assert system_events[0]["args"][0]["message"] == "Connected to real-time server"
 
 
-def test_socketio_multiple_member_clients_can_connect(app, socketio):
-    member_one = _member_client(app)
-    member_two = _member_client(app)
+def test_socketio_multiple_member_clients_can_connect(app, socketio, dummy_cursor):
+    member_one = _member_client(app, dummy_cursor)
+    member_two = _member_client(app, dummy_cursor)
 
     client_one = socketio.test_client(app, flask_test_client=member_one)
     client_two = socketio.test_client(app, flask_test_client=member_two)
@@ -50,9 +65,9 @@ def test_socketio_multiple_member_clients_can_connect(app, socketio):
             client_two.disconnect()
 
 
-def test_socketio_emit_new_message_broadcasts_to_connected_member_clients(app, socketio):
-    member_one = _member_client(app)
-    member_two = _member_client(app)
+def test_socketio_emit_new_message_broadcasts_to_connected_member_clients(app, socketio, dummy_cursor):
+    member_one = _member_client(app, dummy_cursor)
+    member_two = _member_client(app, dummy_cursor)
 
     client_one = socketio.test_client(app, flask_test_client=member_one)
     client_two = socketio.test_client(app, flask_test_client=member_two)
@@ -93,9 +108,9 @@ def test_socketio_emit_new_message_broadcasts_to_connected_member_clients(app, s
             client_two.disconnect()
 
 
-def test_socketio_typing_broadcasts_to_other_members(app, socketio):
-    member_one = _member_client(app)
-    member_two = _member_client(app)
+def test_socketio_typing_broadcasts_to_other_members(app, socketio, dummy_cursor):
+    member_one = _member_client(app, dummy_cursor)
+    member_two = _member_client(app, dummy_cursor)
 
     sender = socketio.test_client(app, flask_test_client=member_one)
     receiver = socketio.test_client(app, flask_test_client=member_two)
@@ -118,15 +133,46 @@ def test_socketio_typing_broadcasts_to_other_members(app, socketio):
             receiver.disconnect()
 
 
-def test_socketio_rejects_admin_connections(app, socketio):
-    admin_client = _admin_client(app)
+def test_socketio_rejects_admin_connections(app, socketio, dummy_cursor):
+    admin_client = _admin_client(app, dummy_cursor)
     socket_client = socketio.test_client(app, flask_test_client=admin_client)
 
     assert socket_client.is_connected() is False
+
+
+def test_socketio_rejects_banned_member_connections(app, socketio, dummy_cursor):
+    dummy_cursor.current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": True,
+        "is_deleted": False,
+    }
+    banned_client = app.test_client()
+    with banned_client.session_transaction() as sess:
+        sess["user_id"] = 2
+        sess["username"] = "normaluser"
+        sess["role"] = "user"
+
+    socket_client = socketio.test_client(app, flask_test_client=banned_client)
+
+    assert socket_client.is_connected() is False
+
+
+def test_disconnect_member_sessions_disconnects_connected_members(app, socketio, dummy_cursor):
+    member_client = _member_client(app, dummy_cursor)
+    socket_client = socketio.test_client(app, flask_test_client=member_client)
+
+    try:
+        assert socket_client.is_connected()
+        disconnect_member_sessions(2)
+        assert socket_client.is_connected() is False
+    finally:
+        if socket_client.is_connected():
+            socket_client.disconnect()
 
 
 def test_socketio_client_disconnects_cleanly(socketio_client):
     assert socketio_client.is_connected()
     socketio_client.disconnect()
     assert not socketio_client.is_connected()
-
