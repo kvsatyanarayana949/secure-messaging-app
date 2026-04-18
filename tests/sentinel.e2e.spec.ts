@@ -62,11 +62,11 @@ test('guest can register, login, send a message, toggle theme, and logout', asyn
   await page.locator('#password').fill('Password123');
   await page.getByRole('button', { name: 'Enter Workspace' }).click();
 
-  await expect(page.getByText('Member command stream')).toBeVisible();
+  await expect(page.getByText('Sentinel live room')).toBeVisible();
   await expect(page.locator('#msgInput')).toBeVisible();
 
   await page.locator('#msgInput').fill('browser e2e secure message');
-  await page.getByRole('button', { name: 'Send Message' }).click();
+  await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByText('Message sent to connected members.')).toBeVisible();
   await expect(page.getByText('browser e2e secure message')).toBeVisible();
 
@@ -141,7 +141,7 @@ test('banned member loses the message stream immediately', async ({ browser }) =
     await memberPage.locator('#password').fill('Password123');
     await memberPage.getByRole('button', { name: 'Enter Workspace' }).click();
 
-    await expect(memberPage.getByText('Member command stream')).toBeVisible();
+    await expect(memberPage.getByText('Sentinel live room')).toBeVisible();
     await expect(memberPage.locator('#msgInput')).toBeVisible();
     await expect(memberPage.getByText('welcome to the browser audit stream')).toBeVisible();
 
