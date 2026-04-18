@@ -22,6 +22,7 @@ from .data import (
     write_log,
 )
 from .extensions import limiter, socketio
+from .socket_events import disconnect_member_sessions
 
 
 def serialize_records(records):
@@ -309,7 +310,7 @@ def register_routes(app):
         try:
             cur = get_cursor()
             cur.execute(
-                "SELECT role FROM users WHERE username=%s AND is_deleted=FALSE",
+                "SELECT id, role FROM users WHERE username=%s AND is_deleted=FALSE",
                 (username,),
             )
             user = cur.fetchone()
@@ -324,6 +325,7 @@ def register_routes(app):
             )
             write_log(cur, "USER_BANNED", username=username, status="success")
             commit_or_rollback(success=True)
+            disconnect_member_sessions(user.get("id"))
             return jsonify({"status": "success"}), 200
         except Exception:
             commit_or_rollback(success=False)
@@ -379,4 +381,3 @@ def register_routes(app):
         finally:
             if cur:
                 cur.close()
-
