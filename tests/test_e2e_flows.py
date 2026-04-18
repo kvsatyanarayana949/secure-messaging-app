@@ -8,6 +8,13 @@ def test_member_login_chat_logout_flow(client, mock_db, sample_user_record):
     assert login_response.status_code == 200
     assert login_response.get_json()["can_view_messages"] is True
 
+    mock_db.cursor().current_user_record = {
+        "id": sample_user_record["id"],
+        "username": sample_user_record["username"],
+        "role": sample_user_record["role"],
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().results = []
     messages_response = client.get("/messages")
     assert messages_response.status_code == 200
@@ -23,6 +30,13 @@ def test_member_login_chat_logout_flow(client, mock_db, sample_user_record):
 
 
 def test_admin_dashboard_moderation_logout_flow(client, admin_session, mock_db, sample_users):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().results = sample_users
 
     dashboard_response = client.get("/admin")
@@ -42,4 +56,3 @@ def test_admin_dashboard_moderation_logout_flow(client, admin_session, mock_db, 
 
     logout_response = client.post("/logout")
     assert logout_response.status_code == 200
-
