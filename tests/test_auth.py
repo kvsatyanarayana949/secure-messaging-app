@@ -146,6 +146,13 @@ def test_submit_rejects_empty_message(client, auth_session):
 
 
 def test_messages_success(client, auth_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().results = [
         {"username": "normaluser", "message": "hello world", "created_at": "2026-04-13 10:00:00"}
     ]
@@ -165,6 +172,13 @@ def test_submit_rejects_too_long_message(client, auth_session):
 
 
 def test_submit_success(client, auth_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     response = client.post("/submit", data={"new_message": "hello world"})
 
     assert response.status_code == 201
@@ -185,3 +199,40 @@ def test_logout_success(client, auth_session):
         assert "username" not in sess
         assert "role" not in sess
 
+
+def test_messages_reject_banned_member_session(client, auth_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": True,
+        "is_deleted": False,
+    }
+
+    response = client.get("/messages")
+
+    assert response.status_code == 403
+    assert response.get_json()["message"] == "You are banned"
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
+        assert "username" not in sess
+        assert "role" not in sess
+
+
+def test_submit_rejects_banned_member_session(client, auth_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": True,
+        "is_deleted": False,
+    }
+
+    response = client.post("/submit", data={"new_message": "still trying"})
+
+    assert response.status_code == 403
+    assert response.get_json()["message"] == "You are banned"
+    with client.session_transaction() as sess:
+        assert "user_id" not in sess
+        assert "username" not in sess
+        assert "role" not in sess
