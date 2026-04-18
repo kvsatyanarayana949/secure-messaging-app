@@ -14,6 +14,8 @@ os.environ.setdefault("SOCKETIO_ASYNC_MODE", "threading")
 os.environ.setdefault("RATELIMIT_ENABLED", "false")
 
 import sentinel_app.routes as routes_module
+import sentinel_app.auth as auth_module
+import sentinel_app.data as data_module
 from sentinel_app import create_app
 from sentinel_app.extensions import socketio
 
@@ -77,6 +79,17 @@ class MemoryCursor:
         self.last_params = params or ()
         self.rowcount = 1
 
+        if self.last_query.startswith("select id, username, role, is_banned, is_deleted from users where id="):
+            user_id = self.last_params[0]
+            self.one = next(({
+                "id": user["id"],
+                "username": user["username"],
+                "role": user["role"],
+                "is_banned": user["is_banned"],
+                "is_deleted": user["is_deleted"],
+            } for user in USERS if user["id"] == user_id), None)
+            return
+
         if self.last_query.startswith("select id, username"):
             username = self.last_params[0]
             self.one = next((deepcopy(user) for user in USERS if user["username"] == username), None)
@@ -115,6 +128,14 @@ class MemoryCursor:
                 "message": message,
                 "created_at": "just now",
             })
+            return
+
+        if self.last_query.startswith("select id, role from users"):
+            username = self.last_params[0]
+            user = next((user for user in USERS if user["username"] == username and not user["is_deleted"]), None)
+            self.one = {"id": user["id"], "role": user["role"]} if user else None
+            if not user:
+                self.rowcount = 0
             return
 
         if self.last_query.startswith("select role from users"):
@@ -222,6 +243,9 @@ routes_module.fetch_recent_messages = fetch_recent_messages
 routes_module.fetch_users = fetch_users
 routes_module.write_log = write_log
 routes_module.commit_or_rollback = commit_or_rollback
+auth_module.get_cursor = get_cursor
+data_module.get_connection = get_connection
+data_module.get_cursor = get_cursor
 
 app = create_app({
     "TESTING": False,
@@ -235,4 +259,3 @@ app = create_app({
 
 if __name__ == "__main__":
     socketio.run(app, host="127.0.0.1", port=5100, debug=False, allow_unsafe_werkzeug=True)
-
