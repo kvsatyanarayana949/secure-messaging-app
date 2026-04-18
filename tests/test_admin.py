@@ -47,6 +47,13 @@ def test_normal_user_cannot_ban_user(client, auth_session):
 
 
 def test_admin_can_get_users(client, admin_session, mock_db, sample_users):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().results = sample_users
 
     response = client.get("/users")
@@ -60,6 +67,13 @@ def test_admin_can_get_users(client, admin_session, mock_db, sample_users):
 
 
 def test_admin_can_get_logs(client, admin_session, mock_db, sample_logs):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().results = sample_logs
 
     response = client.get("/logs")
@@ -87,6 +101,13 @@ def test_admin_ban_user_requires_username(client, admin_session):
 
 
 def test_admin_can_ban_existing_user(client, admin_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().one = {"role": "user"}
     mock_db.cursor().rowcount = 1
 
@@ -99,6 +120,13 @@ def test_admin_can_ban_existing_user(client, admin_session, mock_db):
 
 
 def test_admin_can_unban_existing_user(client, admin_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().one = {"role": "user"}
     mock_db.cursor().rowcount = 1
 
@@ -111,6 +139,13 @@ def test_admin_can_unban_existing_user(client, admin_session, mock_db):
 
 
 def test_admin_ban_user_returns_404_when_user_missing(client, admin_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().rowcount = 0
 
     response = client.post("/ban_user", data={"username": "missinguser"})
@@ -120,10 +155,16 @@ def test_admin_ban_user_returns_404_when_user_missing(client, admin_session, moc
 
 
 def test_admin_cannot_ban_another_admin(client, admin_session, mock_db):
+    mock_db.cursor().current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     mock_db.cursor().one = {"role": "admin"}
 
     response = client.post("/ban_user", data={"username": "anotheradmin"})
 
     assert response.status_code == 400
     assert response.get_json()["message"] == "Cannot ban another admin"
-
