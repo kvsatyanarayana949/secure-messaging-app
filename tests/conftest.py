@@ -19,11 +19,18 @@ class DummyCursor:
         self.results = []
         self.rowcount = 1
         self.executed = []
+        self.current_user_record = None
+        self.last_query = ""
+        self.last_params = None
 
     def execute(self, query, params=None):
         self.executed.append((query, params))
+        self.last_query = query
+        self.last_params = params
 
     def fetchone(self):
+        if "FROM users WHERE id=%s" in self.last_query:
+            return self.current_user_record
         return self.one
 
     def fetchall(self):
@@ -79,7 +86,14 @@ def socketio(app):
 
 
 @pytest.fixture
-def socketio_client(app, client):
+def socketio_client(app, client, dummy_cursor):
+    dummy_cursor.current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     with client.session_transaction() as sess:
         sess["user_id"] = 2
         sess["username"] = "normaluser"
@@ -100,14 +114,21 @@ def dummy_connection(dummy_cursor):
     return DummyConnection(dummy_cursor)
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_db(monkeypatch, dummy_connection):
     monkeypatch.setattr(data_module, "get_connection", lambda: dummy_connection)
     return dummy_connection
 
 
 @pytest.fixture
-def auth_session(client):
+def auth_session(client, dummy_cursor):
+    dummy_cursor.current_user_record = {
+        "id": 2,
+        "username": "normaluser",
+        "role": "user",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     with client.session_transaction() as sess:
         sess["user_id"] = 2
         sess["username"] = "normaluser"
@@ -115,7 +136,14 @@ def auth_session(client):
 
 
 @pytest.fixture
-def admin_session(client):
+def admin_session(client, dummy_cursor):
+    dummy_cursor.current_user_record = {
+        "id": 1,
+        "username": "adminuser",
+        "role": "admin",
+        "is_banned": False,
+        "is_deleted": False,
+    }
     with client.session_transaction() as sess:
         sess["user_id"] = 1
         sess["username"] = "adminuser"
@@ -188,4 +216,3 @@ def sample_users():
             "last_login_at": "2026-04-13 10:05:00",
         },
     ]
-
