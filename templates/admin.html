@@ -1,92 +1,496 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sentinel Admin | Access Operations</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-    darkMode: ["class", '[data-theme="dark"]'],
-    theme: {
-        extend: {
-            colors: {
-                ink: "#061018",
-                steel: "#0d1b24",
-                pulse: "#00e5ff"
-            },
-            fontFamily: {
-                sans: ["Satoshi", "sans-serif"],
-                display: ["Cabinet Grotesk", "sans-serif"]
-            },
-            boxShadow: {
-                glow: "0 24px 90px rgba(0,229,255,.24)",
-                soft: "0 30px 80px rgba(6,16,24,.18)"
-            }
-        }
-    }
-};
-</script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
 :root {
     color-scheme: light;
-    --page: #eef5f6;
-    --text: #071016;
-    --muted: #567078;
-    --card: rgba(255,255,255,.78);
-    --line: rgba(7,16,22,.12);
-    --beam: rgba(0,229,255,.34);
+    --page: #f5f7f8;
+    --surface: rgba(255, 255, 255, 0.9);
+    --surface-strong: #ffffff;
+    --text: #12202a;
+    --muted: #60717b;
+    --line: rgba(18, 32, 42, 0.12);
+    --line-strong: rgba(18, 32, 42, 0.2);
+    --accent: #12b7d5;
+    --accent-strong: #0891b2;
+    --accent-soft: rgba(18, 183, 213, 0.1);
+    --danger: #dc2626;
+    --danger-soft: rgba(220, 38, 38, 0.09);
+    --success: #0f9d58;
+    --success-soft: rgba(15, 157, 88, 0.1);
+    --shadow-lg: 0 36px 100px rgba(17, 32, 43, 0.12);
+    --shadow-md: 0 18px 44px rgba(17, 32, 43, 0.08);
 }
 [data-theme="dark"] {
     color-scheme: dark;
-    --page: #061018;
-    --text: #eefbff;
-    --muted: #8facb6;
-    --card: rgba(12,26,35,.72);
-    --line: rgba(196,244,255,.14);
-    --beam: rgba(0,229,255,.24);
+    --page: #071219;
+    --surface: rgba(12, 24, 33, 0.86);
+    --surface-strong: #0e1c25;
+    --text: #f5fbff;
+    --muted: #90a5b2;
+    --line: rgba(191, 228, 240, 0.12);
+    --line-strong: rgba(191, 228, 240, 0.22);
+    --accent: #34d6f7;
+    --accent-strong: #67e8f9;
+    --accent-soft: rgba(52, 214, 247, 0.14);
+    --danger: #fb7185;
+    --danger-soft: rgba(251, 113, 133, 0.12);
+    --success: #5eead4;
+    --success-soft: rgba(94, 234, 212, 0.12);
+    --shadow-lg: 0 40px 110px rgba(2, 6, 10, 0.45);
+    --shadow-md: 0 22px 50px rgba(2, 6, 10, 0.28);
+}
+* {
+    box-sizing: border-box;
+}
+html, body {
+    margin: 0;
+    min-height: 100%;
 }
 body {
-    margin: 0;
-    min-height: 100vh;
-    color: var(--text);
     font-family: "Satoshi", sans-serif;
+    color: var(--text);
     background:
-        radial-gradient(circle at 5% 4%, var(--beam), transparent 24rem),
-        radial-gradient(circle at 84% 18%, rgba(255,255,255,.08), transparent 20rem),
-        linear-gradient(135deg, var(--page), color-mix(in srgb, var(--page) 88%, #00e5ff 12%));
+        radial-gradient(circle at top left, rgba(18, 183, 213, 0.16), transparent 24rem),
+        radial-gradient(circle at bottom right, rgba(8, 145, 178, 0.14), transparent 22rem),
+        linear-gradient(180deg, #fbfcfc 0%, var(--page) 58%);
+}
+[data-theme="dark"] body {
+    background:
+        radial-gradient(circle at top left, rgba(52, 214, 247, 0.18), transparent 24rem),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.18), transparent 20rem),
+        linear-gradient(180deg, #061017 0%, var(--page) 60%);
 }
 body::before {
     content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: .24;
     background-image:
-        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+        linear-gradient(rgba(18, 32, 42, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(18, 32, 42, 0.04) 1px, transparent 1px);
     background-size: 48px 48px;
-    mask-image: linear-gradient(to bottom, #000, transparent 84%);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 92%);
 }
-.glass {
+.shell {
+    position: relative;
+    width: min(1180px, calc(100vw - 32px));
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 24px 0 48px;
+}
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #042431;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    box-shadow: 0 18px 38px rgba(18, 183, 213, 0.22);
+}
+.brand-title {
+    margin: 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+}
+.brand-subtitle,
+.section-label,
+.metric-label,
+.chip,
+.row-label,
+.status-text {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+}
+.brand-subtitle {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.surface {
+    background: var(--surface);
     border: 1px solid var(--line);
-    background: var(--card);
-    backdrop-filter: blur(22px);
-    box-shadow: 0 28px 86px rgba(6,16,24,.18);
+    border-radius: 28px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(18px);
 }
-.gradient-text {
-    background: linear-gradient(120deg, var(--text), #00e5ff 48%, #8ef5ff 74%);
-    -webkit-background-clip: text;
-    color: transparent;
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
-.focus-ring:focus {
+.button:hover {
+    transform: translateY(-1px);
+}
+.button:focus,
+.metric-card:focus,
+.input:focus,
+.search-input:focus {
     outline: none;
-    box-shadow: 0 0 0 4px rgba(0,229,255,.22);
-    border-color: rgba(0,229,255,.72);
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 4px rgba(18, 183, 213, 0.18);
+}
+.button-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #042431;
+    box-shadow: 0 20px 38px rgba(18, 183, 213, 0.22);
+}
+.button-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--line);
+}
+.button-danger {
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--danger);
+    border-color: rgba(220, 38, 38, 0.14);
+}
+.button-success {
+    background: rgba(15, 157, 88, 0.1);
+    color: var(--success);
+    border-color: rgba(15, 157, 88, 0.14);
+}
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+.spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 2px solid rgba(4, 36, 49, 0.2);
+    border-top-color: rgba(4, 36, 49, 0.82);
+    animation: spin 0.85s linear infinite;
+}
+.layout {
+    display: grid;
+    gap: 28px;
+}
+.hero {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+    align-items: start;
+}
+.intro,
+.control-panel,
+.board {
+    padding: 28px;
+}
+.section-label {
+    margin: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.intro-title,
+.board-title {
+    margin: 10px 0 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: clamp(2.2rem, 4vw, 3.6rem);
+    line-height: 0.98;
+    letter-spacing: -0.05em;
+}
+.accent-text {
+    color: var(--accent-strong);
+}
+.intro-copy,
+.status-copy,
+.row-copy {
+    color: var(--muted);
+    line-height: 1.7;
+}
+.status-box {
+    margin-top: 22px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    font-size: 0.95rem;
+}
+.status-box.good {
+    background: var(--success-soft);
+    border-color: rgba(15, 157, 88, 0.18);
+    color: var(--success);
+}
+.status-box.error {
+    background: var(--danger-soft);
+    border-color: rgba(220, 38, 38, 0.16);
+    color: var(--danger);
+}
+.status-box.neutral {
+    background: rgba(255, 255, 255, 0.22);
+}
+[data-theme="dark"] .status-box.neutral {
+    background: rgba(255, 255, 255, 0.03);
+}
+.summary-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.metric-card {
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.52);
+    border-radius: 22px;
+    padding: 20px;
+    text-align: left;
+    box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] .metric-card {
+    background: rgba(255, 255, 255, 0.03);
+}
+.metric-card.active {
+    border-color: rgba(18, 183, 213, 0.26);
+    box-shadow: 0 0 0 1px rgba(18, 183, 213, 0.18), var(--shadow-md);
+}
+.metric-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.metric-value {
+    margin-top: 14px;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 2.4rem;
+    font-weight: 800;
+}
+.metric-copy {
+    margin-top: 8px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-size: 0.94rem;
+}
+.controls-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.input,
+.search-input {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.66);
+    color: var(--text);
+    font: inherit;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+[data-theme="dark"] .input,
+[data-theme="dark"] .search-input {
+    background: rgba(255, 255, 255, 0.04);
+}
+.control-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+.board-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+}
+.board-title {
+    font-size: 2.2rem;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+.chip-live {
+    background: var(--success-soft);
+    color: var(--success);
+}
+.board-tools {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.member-list {
+    display: grid;
+    gap: 14px;
+    margin-top: 20px;
+}
+.member-row {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 20px;
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.54);
+    box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] .member-row {
+    background: rgba(255, 255, 255, 0.03);
+}
+.row-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.avatar {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #042431;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+.row-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+.row-copy {
+    margin: 8px 0 0;
+}
+.row-tags {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.tag-danger {
+    color: var(--danger);
+    background: var(--danger-soft);
+    border-color: rgba(220, 38, 38, 0.16);
+}
+.tag-success {
+    color: var(--success);
+    background: var(--success-soft);
+    border-color: rgba(15, 157, 88, 0.16);
+}
+.row-meta {
+    display: grid;
+    gap: 8px;
+}
+.row-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.empty-state {
+    margin-top: 20px;
+    padding: 28px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 22px;
+    text-align: center;
+    color: var(--muted);
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (max-width: 1024px) {
+    .hero,
+    .controls-grid,
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .shell {
+        width: min(100vw - 24px, 100%);
+        padding-top: 16px;
+    }
+    .topbar,
+    .board-header,
+    .row-head,
+    .row-actions,
+    .control-actions,
+    .topbar-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .member-row {
+        grid-template-columns: 1fr;
+    }
+    .intro,
+    .control-panel,
+    .board {
+        padding: 22px;
+    }
 }
 </style>
 </head>
@@ -102,30 +506,17 @@ body::before {
 </script>
 <script>
 const e = React.createElement;
-const { useEffect, useMemo, useState } = React;
+const { useEffect, useMemo, useRef, useState } = React;
 const bootstrap = JSON.parse(document.getElementById("bootstrap-data").textContent || "{}");
-const motionSource = (window.Motion && window.Motion.motion) || (window.framerMotion && window.framerMotion.motion);
-const hasMotion = Boolean(motionSource);
-const Motion = {
-    div: hasMotion ? motionSource.div : "div",
-    article: hasMotion ? motionSource.article : "article",
-    section: hasMotion ? motionSource.section : "section",
-    button: hasMotion ? motionSource.button : "button"
-};
-const motionProps = (props) => hasMotion ? props : {};
 
 let csrfToken = document.querySelector("meta[name='csrf-token']")?.content || "";
 
-function cx(...classes) {
-    return classes.filter(Boolean).join(" ");
+function cx() {
+    return Array.from(arguments).filter(Boolean).join(" ");
 }
 
-async function parseJson(response) {
-    try {
-        return await response.json();
-    } catch (_error) {
-        return {};
-    }
+function parseJson(response) {
+    return response.json().catch(() => ({}));
 }
 
 async function refreshCsrfToken() {
@@ -159,9 +550,9 @@ async function getJson(url) {
     return payload;
 }
 
-async function postForm(url, data = {}, retryOnCsrf = true) {
+async function postForm(url, data, retryOnCsrf = true) {
     const body = new URLSearchParams();
-    Object.entries({ ...data, csrf_token: csrfToken }).forEach(([key, value]) => {
+    Object.entries(Object.assign({}, data, { csrf_token: csrfToken })).forEach(([key, value]) => {
         body.append(key, value ?? "");
     });
 
@@ -186,235 +577,426 @@ async function postForm(url, data = {}, retryOnCsrf = true) {
     return payload;
 }
 
-function Button({ children, variant = "primary", className = "", ...props }) {
-    const variants = {
-        primary: "bg-pulse text-ink shadow-glow hover:bg-cyan-200",
-        secondary: "bg-white/10 text-[var(--text)] ring-1 ring-[var(--line)] hover:bg-white/16",
-        danger: "bg-rose-500 text-white shadow-[0_20px_70px_rgba(244,63,94,.22)] hover:bg-rose-400",
-        quiet: "text-[var(--muted)] hover:text-[var(--text)]"
+function normalizeMember(record) {
+    const role = (record.role || "member").toLowerCase() === "user" ? "member" : (record.role || "member").toLowerCase();
+    const status = record.status ? record.status.toLowerCase() : (record.is_banned ? "banned" : "active");
+    return Object.assign({}, record, {
+        role,
+        status,
+        is_online: Boolean(record.is_online),
+        is_banned: status === "banned"
+    });
+}
+
+function sortMembers(records) {
+    return (records || [])
+        .map(normalizeMember)
+        .sort((left, right) => {
+            if (left.is_online !== right.is_online) {
+                return left.is_online ? -1 : 1;
+            }
+            return String(left.username || "").localeCompare(String(right.username || ""));
+        });
+}
+
+function computeStats(records) {
+    const members = sortMembers(records);
+    return {
+        active_users: members.filter((record) => record.is_online).length,
+        total_members: members.length,
+        banned_users: members.filter((record) => record.status === "banned").length,
+        offline_users: members.filter((record) => !record.is_online).length
     };
+}
+
+function Button(props) {
+    const {
+        children,
+        variant = "primary",
+        loading = false,
+        className = "",
+        ...rest
+    } = props;
     return e(
-        Motion.button,
-        {
-            ...motionProps({ whileHover: { scale: 1.025, y: -1 }, whileTap: { scale: .98 } }),
-            ...props,
-            className: cx("inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-black transition duration-200 disabled:pointer-events-none disabled:opacity-55", variants[variant], className)
-        },
+        "button",
+        Object.assign({}, rest, {
+            className: cx(
+                "button",
+                variant === "primary"
+                    ? "button-primary"
+                    : variant === "danger"
+                        ? "button-danger"
+                        : variant === "success"
+                            ? "button-success"
+                            : "button-secondary",
+                className
+            )
+        }),
+        loading ? e("span", { className: "spinner", "aria-hidden": "true" }) : null,
         children
     );
 }
 
-function Status({ status }) {
-    const tone = status.tone === "danger"
-        ? "border-rose-400/30 bg-rose-500/15 text-rose-700 dark:text-rose-100"
-        : status.tone === "good"
-            ? "border-pulse/30 bg-pulse/15 text-cyan-900 dark:text-cyan-50"
-            : "border-[var(--line)] bg-white/60 text-[var(--muted)] dark:bg-white/8";
-    return e("div", { id: "statusBox", className: cx("rounded-2xl border px-4 py-3 text-sm font-bold", tone) }, status.message);
-}
-
-function Metric({ label, value, caption }) {
+function ThemeToggle({ theme, onToggle }) {
     return e(
-        Motion.div,
+        Button,
         {
-            ...motionProps({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: .42 } }),
-            className: "glass rounded-[2rem] p-5"
+            id: "themeBtn",
+            type: "button",
+            variant: "secondary",
+            onClick: onToggle
         },
-        e("p", { className: "text-xs font-black uppercase tracking-[.18em] text-[var(--muted)]" }, label),
-        e("div", { className: "mt-3 font-display text-4xl font-black" }, value),
-        e("p", { className: "mt-2 text-sm leading-6 text-[var(--muted)]" }, caption)
+        theme === "dark" ? "Light" : "Dark"
     );
 }
 
-function computeStats(records) {
-    const total = records.length;
-    const banned = records.filter((record) => record.is_banned).length;
-    const admins = records.filter((record) => record.role === "admin").length;
-    return { total, banned, admins, active: total - banned };
+function formatLastSeen(record) {
+    if (record.is_online) {
+        return "Live now";
+    }
+    if (!record.last_seen) {
+        return "No presence recorded";
+    }
+    const normalized = String(record.last_seen).replace(" ", "T");
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+        return record.last_seen;
+    }
+    return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
 }
 
-function MemberCard({ record, onModerate }) {
-    const banned = Boolean(record.is_banned);
-    const isAdmin = record.role === "admin";
+function MetricCard({ id, label, value, copy, active, onClick }) {
     return e(
-        Motion.article,
+        "button",
         {
-            ...motionProps({ initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: { duration: .28 } }),
-            className: "group grid gap-4 rounded-[1.7rem] border border-[var(--line)] bg-white/70 p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-soft dark:bg-white/8 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+            type: "button",
+            className: cx("metric-card", active && "active"),
+            onClick: () => onClick(id)
         },
-        e("div", { className: cx("grid h-12 w-12 place-items-center rounded-2xl font-black text-ink shadow-glow", banned ? "bg-rose-300" : "bg-pulse") }, (record.username || "?").slice(0, 1).toUpperCase()),
-        e("div", null,
-            e("div", { className: "flex flex-wrap items-center gap-2" },
-                e("h3", { className: "font-display text-xl font-black" }, record.username),
-                e("span", { className: "rounded-full border border-[var(--line)] px-2 py-1 text-xs font-black uppercase tracking-[.14em] text-[var(--muted)]" }, record.role),
-                e("span", { className: cx("rounded-full px-2 py-1 text-xs font-black uppercase tracking-[.14em]", banned ? "bg-rose-500/15 text-rose-500" : "bg-pulse/15 text-cyan-700 dark:text-cyan-200") }, banned ? "Banned" : "Active")
+        e("div", { className: "metric-label" }, label),
+        e("div", { className: "metric-value" }, value),
+        e("div", { className: "metric-copy" }, copy)
+    );
+}
+
+function MemberRow({ record, busyKey, onModerate }) {
+    const actionKey = `${record.status}:${record.username}`;
+    const isAdmin = record.role === "admin";
+    const onlineTone = record.is_online ? "tag-success" : "";
+    const statusTone = record.status === "banned" ? "tag-danger" : "tag-success";
+    return e(
+        "article",
+        { className: "member-row" },
+        e("div", { className: "row-meta" },
+            e("div", { className: "row-head" },
+                e("div", { className: "avatar" }, (record.username || "?").slice(0, 1).toUpperCase()),
+                e("div", null,
+                    e("h3", { className: "row-name" }, record.username || "Unknown"),
+                    e("p", { className: "row-copy" }, record.email || "No email available")
+                )
             ),
-            e("p", { className: "mt-2 text-sm leading-6 text-[var(--muted)]" }, `${record.email || "no email"} | Last login: ${record.last_login_at || "Never"}`)
+            e("div", { className: "row-tags" },
+                e("span", { className: "tag" }, record.role),
+                e("span", { className: cx("tag", statusTone) }, record.status),
+                e("span", { className: cx("tag", onlineTone) }, record.is_online ? "online" : "offline")
+            ),
+            e("div", { className: "row-copy" },
+                e("strong", { className: "row-label" }, "Last seen"),
+                e("div", { style: { marginTop: "6px" } }, formatLastSeen(record))
+            )
         ),
-        e("div", { className: "flex gap-2 sm:justify-end" },
+        e("div", { className: "row-actions" },
             isAdmin
                 ? e(Button, { type: "button", variant: "secondary", disabled: true }, "Protected")
-                : e(Button, {
-                    type: "button",
-                    className: "member-action",
-                    variant: banned ? "primary" : "danger",
-                    onClick: () => onModerate(banned ? "/unban_user" : "/ban_user", record.username)
-                }, banned ? "Unban" : "Ban")
+                : record.status === "banned"
+                    ? e(Button, {
+                        type: "button",
+                        variant: "success",
+                        loading: busyKey === actionKey,
+                        disabled: busyKey === actionKey,
+                        onClick: () => onModerate("/unban_user", record.username)
+                    }, "Unban User")
+                    : e(Button, {
+                        type: "button",
+                        variant: "danger",
+                        loading: busyKey === actionKey,
+                        disabled: busyKey === actionKey,
+                        onClick: () => onModerate("/ban_user", record.username)
+                    }, "Ban User")
         )
     );
 }
 
 function AdminApp() {
-    const [theme, setTheme] = useState(localStorage.getItem("sentinel-theme") || "dark");
-    const [members, setMembers] = useState(Array.isArray(bootstrap.members) ? bootstrap.members : []);
+    const [theme, setTheme] = useState(localStorage.getItem("sentinel-theme") || "light");
+    const [members, setMembers] = useState(sortMembers(bootstrap.members || []));
+    const [filter, setFilter] = useState("all");
     const [query, setQuery] = useState("");
     const [quickUsername, setQuickUsername] = useState("");
-    const [busyAction, setBusyAction] = useState("");
-    const [status, setStatus] = useState({ tone: "neutral", message: "Access operations console loaded. Private messages remain sealed." });
+    const [busyKey, setBusyKey] = useState("");
+    const [status, setStatus] = useState({ tone: "neutral", message: "Access operations console loaded. Presence sync is standing by." });
+    const socketRef = useRef(null);
 
     useEffect(() => {
         document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem("sentinel-theme", theme);
     }, [theme]);
 
+    const stats = useMemo(() => computeStats(members), [members]);
+
     const filteredMembers = useMemo(() => {
         const needle = query.trim().toLowerCase();
-        if (!needle) {
-            return members;
-        }
         return members.filter((record) => {
-            return [record.username, record.email, record.role, record.is_banned ? "banned" : "active"].join(" ").toLowerCase().includes(needle);
+            const matchesFilter = filter === "all"
+                ? true
+                : filter === "active"
+                    ? record.is_online
+                    : filter === "banned"
+                        ? record.status === "banned"
+                        : !record.is_online;
+            if (!matchesFilter) {
+                return false;
+            }
+            if (!needle) {
+                return true;
+            }
+            return [record.username, record.email, record.role, record.status, record.is_online ? "online" : "offline"]
+                .join(" ")
+                .toLowerCase()
+                .includes(needle);
         });
-    }, [members, query]);
+    }, [filter, members, query]);
 
-    const stats = computeStats(filteredMembers);
+    useEffect(() => {
+        if (!window.io) {
+            return undefined;
+        }
+        const socket = window.io({ transports: ["websocket", "polling"] });
+        socketRef.current = socket;
+        socket.on("system", (payload) => {
+            setStatus({ tone: "good", message: payload?.message || "Connected to admin presence channel." });
+        });
+        socket.on("presence_update", (payload) => {
+            setMembers((current) => {
+                if (!current.some((record) => record.username === payload.username)) {
+                    return current;
+                }
+                return sortMembers(current.map((record) => {
+                    if (record.username !== payload.username) {
+                        return record;
+                    }
+                    return Object.assign({}, record, {
+                        role: payload.role || record.role,
+                        status: payload.status || record.status,
+                        is_online: Boolean(payload.is_online),
+                        last_seen: payload.last_seen || record.last_seen,
+                        is_banned: (payload.status || record.status) === "banned"
+                    });
+                }));
+            });
+        });
+        socket.on("roster_refresh", () => {
+            loadMembers(true);
+        });
+        socket.on("connect_error", () => {
+            setStatus({ tone: "error", message: "Realtime presence sync is retrying." });
+        });
+        socket.on("disconnect", () => {
+            setStatus({ tone: "neutral", message: "Presence sync disconnected." });
+        });
+        return () => {
+            socket.disconnect();
+            socketRef.current = null;
+        };
+    }, []);
 
-    async function loadMembers() {
+    async function loadMembers(silent = false) {
         try {
             const payload = await getJson("/users");
-            setMembers(payload.users || []);
-            setStatus({ tone: "good", message: "Member roster refreshed." });
+            setMembers(sortMembers(payload.users || []));
+            if (!silent) {
+                setStatus({ tone: "good", message: "Member roster refreshed." });
+            }
         } catch (error) {
-            setStatus({ tone: "danger", message: error.message || "Failed to load members." });
+            setStatus({ tone: "error", message: error.message || "Failed to load the member roster." });
         }
     }
 
     async function moderate(endpoint, username) {
-        if (!username) {
-            setStatus({ tone: "danger", message: "Enter a username before running moderation." });
+        const trimmed = (username || "").trim();
+        if (!trimmed) {
+            setStatus({ tone: "error", message: "Enter a username before running moderation." });
             return;
         }
+
+        const key = `${endpoint === "/ban_user" ? "active" : "banned"}:${trimmed}`;
         try {
-            setBusyAction(endpoint + username);
-            await postForm(endpoint, { username });
+            setBusyKey(key);
+            await postForm(endpoint, { username: trimmed });
             setQuickUsername("");
-            await loadMembers();
-            setStatus({ tone: "good", message: `${username} updated successfully.` });
+            await loadMembers(true);
+            setStatus({ tone: "good", message: `${trimmed} updated successfully.` });
         } catch (error) {
-            setStatus({ tone: "danger", message: error.message || "Moderation failed." });
+            setStatus({ tone: "error", message: error.message || "Moderation failed." });
         } finally {
-            setBusyAction("");
+            setBusyKey("");
         }
     }
 
     async function logout() {
         try {
-            await postForm("/logout");
+            await postForm("/logout", {});
             window.location.href = "/";
         } catch (error) {
-            setStatus({ tone: "danger", message: error.message || "Logout failed." });
+            setStatus({ tone: "error", message: error.message || "Logout failed." });
         }
     }
 
     return e(
         "main",
-        { className: "relative mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8" },
-        e("nav", { className: "relative z-10 flex flex-wrap items-center justify-between gap-4 py-3" },
-            e("div", { className: "flex items-center gap-3" },
-                e("div", { className: "grid h-12 w-12 place-items-center rounded-2xl bg-pulse font-display text-xl font-black text-ink shadow-glow" }, "S"),
+        { className: "shell" },
+        e("header", { className: "topbar" },
+            e("div", { className: "brand" },
+                e("div", { className: "brand-mark" }, "S"),
                 e("div", null,
-                    e("div", { className: "font-display text-xl font-black" }, "Sentinel Admin"),
-                    e("div", { className: "text-xs font-black uppercase tracking-[.2em] text-[var(--muted)]" }, "Access operations")
+                    e("h1", { className: "brand-title" }, "Sentinel Admin"),
+                    e("span", { className: "brand-subtitle" }, "Access operations")
                 )
             ),
-            e("div", { className: "flex items-center gap-2" },
-                e("div", { className: "rounded-full border border-[var(--line)] bg-white/10 px-4 py-3 text-xs font-black uppercase tracking-[.16em] text-[var(--muted)]" }, `${bootstrap.currentUser} / ${bootstrap.currentRole}`),
-                e(Button, { id: "themeBtn", type: "button", variant: "secondary", onClick: () => setTheme(theme === "dark" ? "light" : "dark"), className: "px-4" }, theme === "dark" ? "Light" : "Dark"),
-                e(Button, { id: "logoutBtn", type: "button", variant: "secondary", onClick: logout, className: "px-4" }, "Logout")
+            e("div", { className: "topbar-actions" },
+                e("span", { className: "chip" }, `${bootstrap.currentUser} / ${bootstrap.currentRole}`),
+                e(ThemeToggle, {
+                    theme,
+                    onToggle: () => setTheme((current) => current === "dark" ? "light" : "dark")
+                }),
+                e(Button, {
+                    id: "logoutBtn",
+                    type: "button",
+                    variant: "secondary",
+                    onClick: logout
+                }, "Logout")
             )
         ),
-        e(Motion.section, {
-            ...motionProps({ initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 }, transition: { duration: .58 } }),
-            className: "grid gap-6 py-10 lg:grid-cols-[.9fr_1.1fr] lg:items-start lg:py-14"
-        },
-            e("aside", { className: "space-y-5" },
-                e("section", { className: "glass rounded-[2.4rem] p-6 sm:p-8" },
-                    e("div", { className: "mb-5 inline-flex rounded-full border border-pulse/30 bg-pulse/10 px-4 py-2 text-xs font-black uppercase tracking-[.2em] text-cyan-700 dark:text-cyan-200" }, "No message visibility"),
-                    e("h1", { className: "font-display text-5xl font-black leading-[.92] tracking-[-.055em] sm:text-6xl" },
-                        "Moderate access, ",
-                        e("span", { className: "gradient-text" }, "not conversations"),
-                        "."
-                    ),
-                    e("p", { className: "mt-5 text-lg leading-8 text-[var(--muted)]" }, "The admin console is intentionally restrained. It manages member status without exposing the private communication layer."),
-                    e("div", { className: "mt-6" }, e(Status, { status }))
+        e("section", { className: "layout" },
+            e("section", { className: "hero" },
+                e("article", { className: "surface intro" },
+                    e("p", { className: "section-label" }, "Moderation boundary"),
+                    e("h2", { className: "intro-title" }, "Manage access, ", e("span", { className: "accent-text" }, "not conversations"), "."),
+                    e("p", { className: "intro-copy" }, "This console shows live user presence and status from MySQL while keeping the member message stream out of admin hands."),
+                    e("div", { className: cx("status-box", status.tone === "good" ? "good" : status.tone === "error" ? "error" : "neutral") }, status.message)
                 ),
-                e("section", { className: "glass rounded-[2rem] p-5" },
-                    e("h2", { className: "font-display text-2xl font-black" }, "Quick moderation"),
-                    e("p", { className: "mt-2 text-sm leading-6 text-[var(--muted)]" }, "Use this for direct actions when you already know the username."),
-                    e("input", {
-                        id: "quickUsername",
-                        value: quickUsername,
-                        onChange: (event) => setQuickUsername(event.target.value),
-                        onKeyDown: (event) => {
-                            if (event.key === "Enter") {
-                                moderate("/ban_user", quickUsername.trim());
-                            }
-                        },
-                        placeholder: "Username",
-                        className: "focus-ring mt-5 h-14 w-full rounded-full border border-[var(--line)] bg-white/70 px-5 font-bold text-slate-950 placeholder:text-slate-400 dark:bg-white/8 dark:text-white"
-                    }),
-                    e("div", { className: "mt-4 flex flex-col gap-3 sm:flex-row" },
-                        e(Button, { id: "quickBanBtn", type: "button", variant: "danger", disabled: busyAction === "/ban_user" + quickUsername, onClick: () => moderate("/ban_user", quickUsername.trim()), className: "flex-1" }, "Ban User"),
-                        e(Button, { id: "quickUnbanBtn", type: "button", disabled: busyAction === "/unban_user" + quickUsername, onClick: () => moderate("/unban_user", quickUsername.trim()), className: "flex-1" }, "Unban User")
-                    )
-                ),
-                e("section", { className: "glass rounded-[2rem] p-5" },
-                    e("h2", { className: "font-display text-2xl font-black" }, "Privacy policy"),
-                    e("div", { className: "mt-4 grid gap-3" },
-                        ["Admins cannot read messages", "Members own the chat workspace", "Moderation actions are auditable"].map((item) => e("div", { key: item, className: "rounded-2xl border border-[var(--line)] bg-white/40 p-4 text-sm font-bold text-[var(--muted)] dark:bg-white/8" }, item))
+                e("article", { className: "surface control-panel" },
+                    e("p", { className: "section-label" }, "Quick moderation"),
+                    e("h3", { className: "board-title", style: { marginTop: "8px" } }, "Direct member actions"),
+                    e("p", { className: "intro-copy", style: { marginTop: "12px" } }, "Use a username to run a single moderation action. The board below stays filtered on real roster data."),
+                    e("div", { className: "controls-grid", style: { marginTop: "22px" } },
+                        e("input", {
+                            id: "quickUsername",
+                            className: "input",
+                            value: quickUsername,
+                            onChange: (event) => setQuickUsername(event.target.value),
+                            onKeyDown: (event) => {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    moderate("/ban_user", quickUsername);
+                                }
+                            },
+                            placeholder: "Enter username"
+                        }),
+                        e("div", { className: "control-actions" },
+                            e(Button, {
+                                id: "quickBanBtn",
+                                type: "button",
+                                variant: "danger",
+                                loading: busyKey === `active:${quickUsername.trim()}`,
+                                disabled: busyKey === `active:${quickUsername.trim()}`,
+                                onClick: () => moderate("/ban_user", quickUsername)
+                            }, "Ban User"),
+                            e(Button, {
+                                id: "quickUnbanBtn",
+                                type: "button",
+                                variant: "success",
+                                loading: busyKey === `banned:${quickUsername.trim()}`,
+                                disabled: busyKey === `banned:${quickUsername.trim()}`,
+                                onClick: () => moderate("/unban_user", quickUsername)
+                            }, "Unban User")
+                        )
                     )
                 )
             ),
-            e("section", { className: "space-y-5" },
-                e("div", { className: "grid gap-3 sm:grid-cols-2 xl:grid-cols-4" },
-                    e(Metric, { label: "Total members", value: stats.total, caption: "Filtered by current roster view." }),
-                    e(Metric, { label: "Active", value: stats.active, caption: "Eligible to enter member chat." }),
-                    e(Metric, { label: "Banned", value: stats.banned, caption: "Blocked from authentication." }),
-                    e(Metric, { label: "Admins", value: stats.admins, caption: "Protected operator accounts." })
-                ),
-                e("section", { className: "glass rounded-[2.4rem] p-4 sm:p-5" },
-                    e("div", { className: "flex flex-col gap-4 border-b border-[var(--line)] pb-5 lg:flex-row lg:items-center lg:justify-between" },
-                        e("div", null,
-                            e("p", { className: "text-xs font-black uppercase tracking-[.18em] text-[var(--muted)]" }, "Member roster"),
-                            e("h2", { className: "mt-1 font-display text-3xl font-black" }, "Access health board")
-                        ),
-                        e("div", { className: "flex flex-col gap-3 sm:flex-row" },
-                            e("input", {
-                                id: "searchInput",
-                                value: query,
-                                onChange: (event) => setQuery(event.target.value),
-                                placeholder: "Search username, email, status",
-                                className: "focus-ring h-12 rounded-full border border-[var(--line)] bg-white/70 px-5 font-bold text-slate-950 placeholder:text-slate-400 dark:bg-white/8 dark:text-white sm:w-72"
-                            }),
-                            e(Button, { id: "refreshBtn", type: "button", variant: "secondary", onClick: loadMembers }, "Refresh")
-                        )
+            e("section", { className: "summary-grid" },
+                e(MetricCard, {
+                    id: "active",
+                    label: "Active users",
+                    value: stats.active_users,
+                    copy: "Currently connected through Socket.IO.",
+                    active: filter === "active",
+                    onClick: setFilter
+                }),
+                e(MetricCard, {
+                    id: "all",
+                    label: "Total members",
+                    value: stats.total_members,
+                    copy: "All users returned by the roster query.",
+                    active: filter === "all",
+                    onClick: setFilter
+                }),
+                e(MetricCard, {
+                    id: "banned",
+                    label: "Banned users",
+                    value: stats.banned_users,
+                    copy: "Accounts blocked from entering the workspace.",
+                    active: filter === "banned",
+                    onClick: setFilter
+                }),
+                e(MetricCard, {
+                    id: "offline",
+                    label: "Offline users",
+                    value: stats.offline_users,
+                    copy: "Accounts not currently connected.",
+                    active: filter === "offline",
+                    onClick: setFilter
+                })
+            ),
+            e("section", { className: "surface board" },
+                e("div", { className: "board-header" },
+                    e("div", null,
+                        e("p", { className: "section-label" }, "Real roster"),
+                        e("h2", { className: "board-title" }, "User presence and access board"),
+                        e("p", { className: "intro-copy", style: { marginTop: "12px" } }, "Click a summary card to filter the list. Search narrows the visible roster without changing the underlying counts.")
                     ),
-                    e("div", { id: "memberList", className: "mt-5 grid max-h-[38rem] gap-3 overflow-auto pr-1" },
-                        filteredMembers.length
-                            ? filteredMembers.map((record) => e(MemberCard, { key: record.username, record, onModerate: moderate }))
-                            : e("div", { className: "rounded-[1.8rem] border border-dashed border-[var(--line)] p-8 text-center text-[var(--muted)]" }, "No members match this search.")
+                    e("div", { className: "board-tools" },
+                        e("span", { className: "chip chip-live" }, "Live presence"),
+                        e("input", {
+                            id: "searchInput",
+                            className: "search-input",
+                            value: query,
+                            onChange: (event) => setQuery(event.target.value),
+                            placeholder: "Search username, role, status"
+                        }),
+                        e(Button, {
+                            id: "refreshBtn",
+                            type: "button",
+                            variant: "secondary",
+                            onClick: () => loadMembers(false)
+                        }, "Refresh")
                     )
-                )
+                ),
+                filteredMembers.length
+                    ? e("div", { id: "memberList", className: "member-list" },
+                        filteredMembers.map((record) => e(MemberRow, {
+                            key: `${record.username}-${record.status}`,
+                            record,
+                            busyKey,
+                            onModerate: moderate
+                        }))
+                    )
+                    : e("div", { className: "empty-state" }, "No users match the current filter.")
             )
         )
     );
@@ -424,4 +1006,3 @@ ReactDOM.createRoot(document.getElementById("admin-app")).render(e(AdminApp));
 </script>
 </body>
 </html>
-
