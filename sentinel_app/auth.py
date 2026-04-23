@@ -2,7 +2,7 @@ from functools import wraps
 
 from flask import current_app, g, jsonify, request, session
 
-from .data import get_cursor
+from .data import MEMBER_ROLE, normalize_user_record, get_cursor
 
 
 _MISSING = object()
@@ -56,10 +56,11 @@ def get_current_user_record():
     try:
         cur = get_cursor()
         cur.execute(
-            "SELECT id, username, role, is_banned, is_deleted FROM users WHERE id=%s",
+            "SELECT id, username, role, status, is_banned, is_deleted, is_online, last_seen "
+            "FROM users WHERE id=%s",
             (user_id,),
         )
-        user = cur.fetchone()
+        user = normalize_user_record(cur.fetchone())
     except Exception:
         current_app.logger.error("Failed to load session user", exc_info=True)
         g._current_user_lookup_failed = True
@@ -101,7 +102,7 @@ def is_admin_session():
 
 def is_member_session():
     user = get_active_user_record()
-    return bool(user and user["role"] == "user")
+    return bool(user and user["role"] == MEMBER_ROLE)
 
 
 def login_required_json(fn):
@@ -148,7 +149,7 @@ def member_required_json(fn):
         if user["is_banned"]:
             invalidate_session()
             return jsonify({"status": "error", "message": "You are banned"}), 403
-        if user["role"] != "user":
+        if user["role"] != MEMBER_ROLE:
             return jsonify({"status": "error", "message": "Admins cannot access messages"}), 403
         return fn(*args, **kwargs)
 
