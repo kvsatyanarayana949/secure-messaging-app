@@ -1,151 +1,635 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sentinel | Secure Team Messaging</title>
+<title>Sentinel | Secure Messaging Workspace</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-    darkMode: ["class", '[data-theme="dark"]'],
-    theme: {
-        extend: {
-            colors: {
-                ink: "#071016",
-                steel: "#0d1b24",
-                veil: "#eff7f8",
-                pulse: "#00e5ff"
-            },
-            fontFamily: {
-                sans: ["Satoshi", "sans-serif"],
-                display: ["Cabinet Grotesk", "sans-serif"]
-            },
-            boxShadow: {
-                glow: "0 24px 90px rgba(0,229,255,.25)",
-                soft: "0 30px 80px rgba(7,16,22,.16)"
-            }
-        }
-    }
-};
-</script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
 :root {
     color-scheme: light;
-    --page: #eef5f6;
-    --text: #071016;
-    --muted: #587078;
-    --card: rgba(255,255,255,.74);
-    --line: rgba(7,16,22,.12);
-    --beam: rgba(0,229,255,.36);
+    --page: #f5f7f8;
+    --surface: rgba(255, 255, 255, 0.9);
+    --surface-strong: #ffffff;
+    --text: #12202a;
+    --muted: #60717b;
+    --line: rgba(18, 32, 42, 0.12);
+    --line-strong: rgba(18, 32, 42, 0.2);
+    --accent: #12b7d5;
+    --accent-strong: #0891b2;
+    --accent-soft: rgba(18, 183, 213, 0.1);
+    --danger: #dc2626;
+    --danger-soft: rgba(220, 38, 38, 0.09);
+    --success: #0f9d58;
+    --success-soft: rgba(15, 157, 88, 0.1);
+    --shadow-lg: 0 36px 100px rgba(17, 32, 43, 0.12);
+    --shadow-md: 0 18px 44px rgba(17, 32, 43, 0.08);
 }
 [data-theme="dark"] {
     color-scheme: dark;
-    --page: #071016;
-    --text: #eefbff;
-    --muted: #8fafb8;
-    --card: rgba(12,26,35,.72);
-    --line: rgba(196,244,255,.14);
-    --beam: rgba(0,229,255,.28);
+    --page: #071219;
+    --surface: rgba(12, 24, 33, 0.86);
+    --surface-strong: #0e1c25;
+    --text: #f5fbff;
+    --muted: #90a5b2;
+    --line: rgba(191, 228, 240, 0.12);
+    --line-strong: rgba(191, 228, 240, 0.22);
+    --accent: #34d6f7;
+    --accent-strong: #67e8f9;
+    --accent-soft: rgba(52, 214, 247, 0.14);
+    --danger: #fb7185;
+    --danger-soft: rgba(251, 113, 133, 0.12);
+    --success: #5eead4;
+    --success-soft: rgba(94, 234, 212, 0.12);
+    --shadow-lg: 0 40px 110px rgba(2, 6, 10, 0.45);
+    --shadow-md: 0 22px 50px rgba(2, 6, 10, 0.28);
+}
+* {
+    box-sizing: border-box;
+}
+html, body {
+    margin: 0;
+    min-height: 100%;
 }
 body {
-    margin: 0;
-    min-height: 100vh;
-    color: var(--text);
     font-family: "Satoshi", sans-serif;
+    color: var(--text);
     background:
-        radial-gradient(circle at 10% 8%, var(--beam), transparent 24rem),
-        radial-gradient(circle at 90% 18%, rgba(118,80,255,.18), transparent 22rem),
-        linear-gradient(135deg, var(--page), color-mix(in srgb, var(--page) 88%, #00e5ff 12%));
+        radial-gradient(circle at top left, rgba(18, 183, 213, 0.18), transparent 26rem),
+        radial-gradient(circle at bottom right, rgba(8, 145, 178, 0.12), transparent 24rem),
+        linear-gradient(180deg, #fbfcfc 0%, var(--page) 58%);
+}
+[data-theme="dark"] body {
+    background:
+        radial-gradient(circle at top left, rgba(52, 214, 247, 0.16), transparent 24rem),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.18), transparent 20rem),
+        linear-gradient(180deg, #061017 0%, var(--page) 60%);
 }
 body::before {
     content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: .28;
     background-image:
-        linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
-    background-size: 46px 46px;
-    mask-image: linear-gradient(to bottom, #000, transparent 82%);
+        linear-gradient(rgba(18, 32, 42, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(18, 32, 42, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 92%);
 }
-.glass {
+.shell {
+    position: relative;
+    width: min(1180px, calc(100vw - 32px));
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 24px 0 48px;
+}
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 40px;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #042431;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    box-shadow: 0 18px 38px rgba(18, 183, 213, 0.22);
+}
+.brand-meta strong,
+.eyebrow,
+.metric-label,
+.panel-label,
+.field-label,
+.chip {
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+.brand-meta strong {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+.brand-title {
+    margin: 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+}
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.surface {
+    background: var(--surface);
     border: 1px solid var(--line);
-    background: var(--card);
-    backdrop-filter: blur(22px);
-    box-shadow: 0 24px 80px rgba(7,16,22,.16);
+    border-radius: 28px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(18px);
 }
-.gradient-text {
-    background: linear-gradient(120deg, var(--text), #00e5ff 46%, #8ef5ff 70%);
-    -webkit-background-clip: text;
-    color: transparent;
+.layout {
+    display: grid;
+    gap: 32px;
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+    align-items: start;
 }
-.orb {
-    position: absolute;
+.hero {
+    padding: 40px;
+}
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
     border-radius: 999px;
-    filter: blur(12px);
-    opacity: .78;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 0.74rem;
+    font-weight: 800;
 }
-.focus-ring:focus {
-    outline: none;
-    box-shadow: 0 0 0 4px rgba(0,229,255,.22);
-    border-color: rgba(0,229,255,.72);
+.hero h1 {
+    margin: 24px 0 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: clamp(3rem, 5vw, 5.5rem);
+    line-height: 0.94;
+    letter-spacing: -0.06em;
 }
-.chat-surface {
-    background:
-        radial-gradient(circle at top right, rgba(37,99,235,.22), transparent 22rem),
-        radial-gradient(circle at top left, rgba(34,197,94,.08), transparent 18rem),
-        linear-gradient(180deg, #0f172a 0%, #020617 34%, #020617 100%);
+.accent-text {
+    color: var(--accent-strong);
 }
-.chat-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148,163,184,.38) transparent;
+.hero-copy {
+    margin: 24px 0 0;
+    max-width: 540px;
+    font-size: 1.08rem;
+    line-height: 1.8;
+    color: var(--muted);
 }
-.chat-scroll::-webkit-scrollbar {
-    width: 8px;
+.hero-grid {
+    display: grid;
+    gap: 16px;
+    margin-top: 32px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.chat-scroll::-webkit-scrollbar-track {
+.metric-card {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.52);
+    box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] .metric-card {
+    background: rgba(255, 255, 255, 0.03);
+}
+.metric-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.metric-value {
+    margin-top: 12px;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.9rem;
+    font-weight: 800;
+}
+.metric-copy {
+    margin-top: 8px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+.panel {
+    padding: 24px;
+}
+.panel-label {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.panel-title {
+    margin: 10px 0 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 2rem;
+    line-height: 1.04;
+    letter-spacing: -0.04em;
+}
+.panel-copy {
+    margin: 16px 0 0;
+    color: var(--muted);
+    line-height: 1.7;
+}
+.segmented {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+}
+[data-theme="dark"] .segmented {
+    background: rgba(255, 255, 255, 0.04);
+}
+.segmented button,
+.button {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.segmented button {
+    min-height: 52px;
+    border-radius: 16px;
+    font-weight: 800;
+    color: var(--muted);
     background: transparent;
 }
-.chat-scroll::-webkit-scrollbar-thumb {
+.segmented button.active {
+    background: var(--surface-strong);
+    color: var(--text);
+    box-shadow: var(--shadow-md);
+}
+.stack {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+}
+.field {
+    display: grid;
+    gap: 8px;
+}
+.field-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.input-shell {
+    position: relative;
+}
+.input,
+.search-input,
+.composer-textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--text);
+    font: inherit;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+[data-theme="dark"] .input,
+[data-theme="dark"] .search-input,
+[data-theme="dark"] .composer-textarea {
+    background: rgba(255, 255, 255, 0.04);
+}
+.input,
+.search-input {
+    min-height: 56px;
+    padding: 0 18px;
+}
+.input:focus,
+.search-input:focus,
+.composer-textarea:focus,
+.icon-button:focus,
+.button:focus,
+.segmented button:focus,
+.action-link:focus {
+    outline: none;
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 4px rgba(18, 183, 213, 0.18);
+}
+.input[type="password"]::-ms-reveal,
+.input[type="password"]::-ms-clear {
+    display: none;
+}
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+}
+.password-toggle:hover,
+.icon-button:hover,
+.button:hover,
+.action-link:hover {
+    transform: translateY(-1px);
+}
+.password-toggle:hover,
+.icon-button:hover {
+    border-color: var(--line);
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--text);
+}
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 0 20px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    font-weight: 800;
+    text-decoration: none;
+}
+.button-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: #042431;
+    box-shadow: 0 22px 40px rgba(18, 183, 213, 0.22);
+}
+.button-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--line);
+}
+.button-quiet {
+    min-height: 44px;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--muted);
+    border-color: var(--line);
+}
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+.form-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+}
+.helper-text,
+.status-text,
+.empty-state,
+.message-meta,
+.security-list li,
+.restriction-list li {
+    color: var(--muted);
+}
+.inline-alert {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.inline-alert.error {
+    border-color: rgba(220, 38, 38, 0.16);
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+.inline-alert.success {
+    border-color: rgba(15, 157, 88, 0.16);
+    background: var(--success-soft);
+    color: var(--success);
+}
+.notice {
+    margin-top: 20px;
+}
+.spinner {
+    width: 16px;
+    height: 16px;
     border-radius: 999px;
-    background: rgba(148,163,184,.36);
+    border: 2px solid rgba(4, 36, 49, 0.2);
+    border-top-color: rgba(4, 36, 49, 0.82);
+    animation: spin 0.85s linear infinite;
 }
-.message-pop {
-    animation: bubble-in .24s cubic-bezier(.2,.8,.2,1) both;
+.security-list,
+.restriction-list {
+    display: grid;
+    gap: 12px;
+    padding: 0;
+    margin: 24px 0 0;
+    list-style: none;
 }
-.typing-dot {
-    animation: typing-bounce 1.1s infinite ease-in-out;
+.security-list li,
+.restriction-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    line-height: 1.6;
 }
-.typing-dot:nth-child(2) {
-    animation-delay: .14s;
+.dot {
+    width: 10px;
+    height: 10px;
+    margin-top: 8px;
+    border-radius: 999px;
+    background: var(--accent-strong);
+    flex: 0 0 auto;
 }
-.typing-dot:nth-child(3) {
-    animation-delay: .28s;
+.workspace {
+    display: grid;
+    gap: 20px;
 }
-@keyframes bubble-in {
-    from {
-        opacity: 0;
-        transform: translateY(14px);
-    }
+.workspace-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+.workspace-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+.chip-good {
+    background: var(--success-soft);
+    color: var(--success);
+}
+.chip-neutral {
+    background: rgba(255, 255, 255, 0.08);
+}
+.search-row {
+    display: flex;
+    gap: 12px;
+}
+.messages {
+    min-height: 360px;
+    max-height: 460px;
+    overflow: auto;
+    padding-right: 4px;
+    display: grid;
+    gap: 14px;
+}
+.message-row {
+    display: flex;
+    justify-content: flex-start;
+}
+.message-row.mine {
+    justify-content: flex-end;
+}
+.message-card {
+    max-width: min(100%, 520px);
+    padding: 14px 16px;
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] .message-card {
+    background: rgba(255, 255, 255, 0.05);
+}
+.message-row.mine .message-card {
+    background: linear-gradient(135deg, rgba(18, 183, 213, 0.16) 0%, rgba(8, 145, 178, 0.2) 100%);
+    border-color: rgba(18, 183, 213, 0.24);
+}
+.message-user {
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+.message-text {
+    margin: 8px 0 0;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.message-meta {
+    margin-top: 8px;
+    font-size: 0.84rem;
+}
+.composer {
+    padding-top: 4px;
+}
+.composer-form {
+    display: grid;
+    gap: 12px;
+}
+.composer-textarea {
+    min-height: 120px;
+    padding: 16px 18px;
+    resize: vertical;
+}
+.status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.typing-indicator {
+    font-size: 0.94rem;
+    color: var(--muted);
+}
+.restriction-card {
+    display: grid;
+    gap: 12px;
+}
+.restriction-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.action-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 0 20px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 800;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.status-banner {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.status-banner.good {
+    border-color: rgba(15, 157, 88, 0.18);
+    background: var(--success-soft);
+    color: var(--success);
+}
+.status-banner.error {
+    border-color: rgba(220, 38, 38, 0.16);
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+.status-banner.neutral {
+    background: rgba(255, 255, 255, 0.28);
+}
+[data-theme="dark"] .status-banner.neutral {
+    background: rgba(255, 255, 255, 0.03);
+}
+@keyframes spin {
     to {
-        opacity: 1;
-        transform: translateY(0);
+        transform: rotate(360deg);
     }
 }
-@keyframes typing-bounce {
-    0%, 80%, 100% {
-        transform: translateY(0);
-        opacity: .45;
+@media (max-width: 1024px) {
+    .layout {
+        grid-template-columns: 1fr;
     }
-    40% {
-        transform: translateY(-4px);
-        opacity: 1;
+    .hero-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .shell {
+        width: min(100vw - 24px, 100%);
+        padding-top: 16px;
+    }
+    .topbar,
+    .workspace-header,
+    .search-row,
+    .form-meta,
+    .status-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hero,
+    .panel {
+        padding: 24px;
+    }
+    .panel-title {
+        font-size: 1.7rem;
     }
 }
 </style>
@@ -154,39 +638,28 @@ body::before {
 <div id="app"></div>
 <script id="bootstrap-data" type="application/json">
 {{ {
+    "viewState": view_state,
     "canViewMessages": can_view_messages,
     "currentUser": current_user,
     "currentRole": current_role,
+    "currentStatus": current_status,
+    "restrictedState": restricted_state,
     "messages": messages
 }|tojson }}
 </script>
 <script>
 const e = React.createElement;
-const { useDeferredValue, useEffect, useMemo, useRef, useState } = React;
-const startTransition = React.startTransition || ((callback) => callback());
+const { useEffect, useMemo, useRef, useState } = React;
 const bootstrap = JSON.parse(document.getElementById("bootstrap-data").textContent || "{}");
-const motionSource = (window.Motion && window.Motion.motion) || (window.framerMotion && window.framerMotion.motion);
-const hasMotion = Boolean(motionSource);
-const Motion = {
-    div: hasMotion ? motionSource.div : "div",
-    article: hasMotion ? motionSource.article : "article",
-    section: hasMotion ? motionSource.section : "section",
-    button: hasMotion ? motionSource.button : "button"
-};
-const motionProps = (props) => hasMotion ? props : {};
 
 let csrfToken = document.querySelector("meta[name='csrf-token']")?.content || "";
 
-function cx(...classes) {
-    return classes.filter(Boolean).join(" ");
+function cx() {
+    return Array.from(arguments).filter(Boolean).join(" ");
 }
 
-async function parseJson(response) {
-    try {
-        return await response.json();
-    } catch (_error) {
-        return {};
-    }
+function parseJson(response) {
+    return response.json().catch(() => ({}));
 }
 
 async function refreshCsrfToken() {
@@ -207,9 +680,9 @@ async function refreshCsrfToken() {
     return csrfToken;
 }
 
-async function postForm(url, data = {}, retryOnCsrf = true) {
+async function postForm(url, data, retryOnCsrf = true) {
     const body = new URLSearchParams();
-    Object.entries({ ...data, csrf_token: csrfToken }).forEach(([key, value]) => {
+    Object.entries(Object.assign({}, data, { csrf_token: csrfToken })).forEach(([key, value]) => {
         body.append(key, value ?? "");
     });
 
@@ -235,872 +708,604 @@ async function postForm(url, data = {}, retryOnCsrf = true) {
     return payload;
 }
 
-function Button({ children, variant = "primary", className = "", ...props }) {
-    const variants = {
-        primary: "bg-pulse text-ink shadow-glow hover:bg-cyan-200",
-        secondary: "bg-white/10 text-[var(--text)] ring-1 ring-[var(--line)] hover:bg-white/16",
-        quiet: "text-[var(--muted)] hover:text-[var(--text)]"
-    };
+function Button(props) {
+    const {
+        children,
+        variant = "primary",
+        loading = false,
+        className = "",
+        ...rest
+    } = props;
     return e(
-        Motion.button,
-        {
-            ...motionProps({ whileHover: { scale: 1.025, y: -1 }, whileTap: { scale: .98 } }),
-            ...props,
+        "button",
+        Object.assign({}, rest, {
             className: cx(
-                "inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm font-black tracking-tight transition duration-200 disabled:pointer-events-none disabled:opacity-55",
-                variants[variant],
+                "button",
+                variant === "primary" ? "button-primary" : variant === "secondary" ? "button-secondary" : "button-quiet",
                 className
             )
-        },
+        }),
+        loading ? e("span", { className: "spinner", "aria-hidden": "true" }) : null,
         children
     );
 }
 
-function PasswordEye({ visible }) {
+function ThemeToggle({ theme, onToggle }) {
+    return e(
+        Button,
+        {
+            id: "themeBtn",
+            type: "button",
+            variant: "secondary",
+            onClick: onToggle
+        },
+        theme === "dark" ? "Light" : "Dark"
+    );
+}
+
+function EyeIcon({ visible }) {
     return e(
         "svg",
         {
-            "aria-hidden": "true",
             viewBox: "0 0 24 24",
             fill: "none",
             stroke: "currentColor",
             strokeWidth: "1.8",
             strokeLinecap: "round",
             strokeLinejoin: "round",
-            className: "h-5 w-5"
+            width: "20",
+            height: "20",
+            "aria-hidden": "true"
         },
         visible
             ? [
-                e("path", { key: "eye-top", d: "M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" }),
-                e("circle", { key: "pupil", cx: "12", cy: "12", r: "3" })
+                e("path", { key: "a", d: "M2 12s3.7-6 10-6 10 6 10 6-3.7 6-10 6-10-6-10-6Z" }),
+                e("circle", { key: "b", cx: "12", cy: "12", r: "3" })
             ]
             : [
-                e("path", { key: "slash", d: "M4 4l16 16" }),
-                e("path", { key: "left", d: "M10.6 6.3A11.7 11.7 0 0 1 12 6c6.5 0 10 6 10 6a17.2 17.2 0 0 1-3.2 3.9" }),
-                e("path", { key: "right", d: "M6.1 6.9C3.7 8.6 2 12 2 12s3.5 6 10 6c1.1 0 2.1-.2 3-.5" }),
-                e("path", { key: "pupil-left", d: "M9.9 9.9A3 3 0 0 0 14.1 14.1" })
+                e("path", { key: "c", d: "M3 3l18 18" }),
+                e("path", { key: "d", d: "M10.6 6.3A10.7 10.7 0 0 1 12 6c6.3 0 10 6 10 6a17.6 17.6 0 0 1-3.4 4" }),
+                e("path", { key: "e", d: "M6 7.1C3.8 8.9 2 12 2 12s3.7 6 10 6c1.2 0 2.2-.2 3.2-.5" })
             ]
     );
-}
-
-function Field({ id, label, type = "text", value, onChange, autoComplete, hidden = false }) {
-    if (hidden) {
-        return null;
-    }
-    const isPasswordField = type === "password";
-    const [passwordVisible, setPasswordVisible] = useState(false);
-    const inputType = isPasswordField && passwordVisible ? "text" : type;
-    return e(
-        "label",
-        { className: "group relative block" },
-        e("input", {
-            id,
-            type: inputType,
-            value,
-            onChange: (event) => onChange(event.target.value),
-            autoComplete,
-            placeholder: " ",
-            className: cx(
-                "peer focus-ring h-16 w-full rounded-2xl border border-[var(--line)] bg-white/70 px-4 pt-5 text-base font-bold text-slate-950 transition dark:bg-white/8 dark:text-white",
-                isPasswordField ? "pr-14" : ""
-            )
-        }),
-        isPasswordField
-            ? e(
-                "button",
-                {
-                    id: `${id}Toggle`,
-                    type: "button",
-                    "aria-label": passwordVisible ? "Hide password" : "Show password",
-                    "aria-pressed": passwordVisible,
-                    onClick: () => setPasswordVisible((current) => !current),
-                    className: "focus-ring absolute right-4 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-transparent text-slate-500 transition hover:border-[var(--line)] hover:bg-black/5 hover:text-slate-700 dark:text-cyan-100/70 dark:hover:bg-white/10 dark:hover:text-white"
-                },
-                e(PasswordEye, { visible: passwordVisible })
-            )
-            : null,
-        e(
-            "span",
-            { className: "pointer-events-none absolute left-4 top-3 text-xs font-black uppercase tracking-[.18em] text-slate-500 transition peer-placeholder-shown:top-5 peer-placeholder-shown:text-sm peer-placeholder-shown:tracking-normal peer-focus:top-3 peer-focus:text-xs peer-focus:tracking-[.18em] dark:text-cyan-100/60" },
-            label
-        )
-    );
-}
-
-function StatusPill({ children, tone = "neutral" }) {
-    const toneClass = tone === "good"
-        ? "border-pulse/30 bg-pulse/10 text-cyan-950 dark:text-cyan-100"
-        : tone === "danger"
-            ? "border-rose-400/30 bg-rose-400/10 text-rose-700 dark:text-rose-200"
-            : "border-[var(--line)] bg-white/10 text-[var(--muted)]";
-    return e("div", { className: cx("rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[.16em]", toneClass) }, children);
-}
-
-function MetricCard({ label, value, detail }) {
-    return e(
-        Motion.div,
-        {
-            ...motionProps({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: .45 } }),
-            className: "glass rounded-[2rem] p-5"
-        },
-        e("p", { className: "text-xs font-black uppercase tracking-[.18em] text-[var(--muted)]" }, label),
-        e("div", { className: "mt-3 font-display text-3xl font-black" }, value),
-        e("p", { className: "mt-2 text-sm text-[var(--muted)]" }, detail)
-    );
-}
-
-function SearchIcon() {
-    return e(
-        "svg",
-        {
-            "aria-hidden": "true",
-            viewBox: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: "1.8",
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            className: "h-4 w-4"
-        },
-        e("circle", { cx: "11", cy: "11", r: "7" }),
-        e("path", { d: "M20 20l-3.5-3.5" })
-    );
-}
-
-function EmojiIcon() {
-    return e(
-        "svg",
-        {
-            "aria-hidden": "true",
-            viewBox: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: "1.8",
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            className: "h-5 w-5"
-        },
-        e("circle", { cx: "12", cy: "12", r: "9" }),
-        e("path", { d: "M8.5 15.2c.9 1.2 2 1.8 3.5 1.8s2.6-.6 3.5-1.8" }),
-        e("circle", { cx: "9", cy: "10", r: "1" }),
-        e("circle", { cx: "15", cy: "10", r: "1" })
-    );
-}
-
-function AttachIcon() {
-    return e(
-        "svg",
-        {
-            "aria-hidden": "true",
-            viewBox: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: "1.8",
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            className: "h-5 w-5"
-        },
-        e("path", { d: "M21.4 11.2 12.1 20.5a5 5 0 0 1-7.1-7.1l9.9-9.9a3.5 3.5 0 1 1 5 5l-10 10a2 2 0 0 1-2.8-2.8l8.4-8.4" })
-    );
-}
-
-function SendIcon() {
-    return e(
-        "svg",
-        {
-            "aria-hidden": "true",
-            viewBox: "0 0 24 24",
-            fill: "currentColor",
-            className: "h-5 w-5"
-        },
-        e("path", { d: "M3.6 4.2a1 1 0 0 1 1.1-.1l15.6 7.2a.8.8 0 0 1 0 1.4L4.7 19.9a1 1 0 0 1-1.4-1l1.2-5.3 8.1-1.6-8.1-1.6-1.2-5.2a1 1 0 0 1 .3-1Z" })
-    );
-}
-
-function Avatar({ username, size = "md" }) {
-    const initial = (username || "?").slice(0, 1).toUpperCase();
-    const sizeClass = size === "sm" ? "h-9 w-9 text-sm" : "h-10 w-10 text-base";
-    return e(
-        "div",
-        { className: "relative shrink-0" },
-        e("div", { className: cx("grid place-items-center rounded-2xl bg-cyan-400 font-black text-slate-950 shadow-[0_18px_40px_rgba(34,211,238,.22)]", sizeClass) }, initial),
-        e("span", { className: "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#020617] bg-emerald-400 shadow-[0_0_0_6px_rgba(16,185,129,.08)]" })
-    );
-}
-
-function parseMessageDate(value) {
-    if (!value || String(value).toLowerCase() === "just now") {
-        return new Date();
-    }
-    const normalized = String(value).replace(" ", "T");
-    const parsed = new Date(normalized);
-    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-}
-
-function isSameDay(left, right) {
-    return left.getFullYear() === right.getFullYear()
-        && left.getMonth() === right.getMonth()
-        && left.getDate() === right.getDate();
 }
 
 function formatMessageTime(value) {
     if (!value || String(value).toLowerCase() === "just now") {
         return "now";
     }
-    return parseMessageDate(value).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-    });
-}
-
-function formatDateDivider(date) {
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-    if (isSameDay(date, today)) {
-        return "Today";
+    const normalized = String(value).replace(" ", "T");
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+        return value;
     }
-    if (isSameDay(date, yesterday)) {
-        return "Yesterday";
-    }
-    return date.toLocaleDateString([], {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    });
-}
-
-function createMessageKey(entry, index = 0) {
-    return `${entry.username || "member"}::${entry.created_at || "now"}::${entry.message || ""}::${index}`;
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
 function normalizeMessages(records) {
-    return [...(records || [])].reverse().map((entry, index) => ({
-        ...entry,
-        _clientId: createMessageKey(entry, index),
-    }));
+    return (records || []).slice().reverse();
 }
 
-function hydrateLiveMessage(entry) {
-    return {
-        ...entry,
-        _clientId: `live-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    };
-}
-
-function buildConversation(messages, currentUser, query) {
-    const memberName = (currentUser || "").trim().toLowerCase();
-    const needle = (query || "").trim().toLowerCase();
-    const filtered = messages
-        .filter((entry) => {
-            const haystack = `${entry.username || ""} ${entry.message || ""}`.toLowerCase();
-            return !needle || haystack.includes(needle);
-        })
-        .map((entry) => ({
-            ...entry,
-            isMine: Boolean(memberName) && (entry.username || "").toLowerCase() === memberName,
-        }));
-
-    const rows = [];
-    filtered.forEach((entry, index) => {
-        const previous = filtered[index - 1];
-        const next = filtered[index + 1];
-        const currentDate = parseMessageDate(entry.created_at);
-        const startsDateGroup = !previous || !isSameDay(currentDate, parseMessageDate(previous.created_at));
-        const sameAsPrevious = previous && previous.username === entry.username && isSameDay(currentDate, parseMessageDate(previous.created_at));
-        const sameAsNext = next && next.username === entry.username && isSameDay(currentDate, parseMessageDate(next.created_at));
-
-        if (startsDateGroup) {
-            rows.push({
-                type: "day",
-                id: `day-${currentDate.toDateString()}-${index}`,
-                label: formatDateDivider(currentDate),
-            });
-        }
-
-        rows.push({
-            type: "message",
-            id: entry._clientId || createMessageKey(entry, index),
-            entry,
-            isMine: entry.isMine,
-            startsCluster: !sameAsPrevious,
-            endsCluster: !sameAsNext,
-            showAvatar: !entry.isMine && !sameAsPrevious,
-        });
-    });
-
-    return {
-        rows,
-        filtered,
-    };
-}
-
-function ChatBubble({ row, showDelivery, reaction, onReact }) {
-    const { entry, isMine, startsCluster, showAvatar } = row;
-    const bubbleShape = isMine
-        ? "rounded-[22px] rounded-br-[8px]"
-        : "rounded-[22px] rounded-bl-[8px]";
-    const bubbleTone = isMine
-        ? "bg-[#2563eb] text-white shadow-[0_18px_42px_rgba(37,99,235,.34)] hover:bg-[#1d4ed8]"
-        : "bg-[#1e293b] text-slate-100 shadow-[0_18px_42px_rgba(2,6,23,.45)] hover:bg-[#273449]";
-
-    return e(
-        Motion.article,
-        {
-            ...motionProps({ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: .2 } }),
-            className: cx("message-pop group flex w-full gap-3", isMine ? "justify-end" : "justify-start")
-        },
-        !isMine
-            ? (
-                showAvatar
-                    ? e(Avatar, { username: entry.username, size: "sm" })
-                    : e("div", { className: "w-9 shrink-0" })
-            )
-            : null,
-        e("div", { className: cx("flex max-w-[70%] flex-col gap-1", isMine ? "items-end" : "items-start") },
-            !isMine && startsCluster
-                ? e("div", { className: "px-1 text-xs font-black uppercase tracking-[.16em] text-slate-400" }, entry.username)
-                : null,
-            e(
-                "button",
-                {
-                    type: "button",
-                    onClick: () => onReact(row.id),
-                    className: cx(
-                        "w-full text-left transition-all duration-200",
-                        isMine ? "self-end" : "self-start"
-                    )
-                },
-                e("div", { className: cx("px-4 py-3.5", bubbleShape, bubbleTone) },
-                    e("p", { className: "break-words text-[15px] leading-6 text-inherit" }, entry.message),
-                    e("div", { className: cx("mt-2 flex items-center gap-2 text-[11px] font-medium", isMine ? "justify-end text-white/70" : "justify-start text-slate-400") },
-                        e("span", null, formatMessageTime(entry.created_at)),
-                        isMine && showDelivery ? e("span", { className: "font-bold text-white/80" }, showDelivery) : null
-                    )
-                )
-            ),
-            reaction
-                ? e("div", { className: cx("rounded-full border border-white/12 bg-white/6 px-2.5 py-1 text-xs font-bold text-white/90 transition", isMine ? "mr-1" : "ml-1") }, `${reaction} 1`)
-                : null
-        )
-    );
-}
-
-function ProductPreview({ messages, isMember, currentUser, query, setQuery, onSend, onTyping, onActionStatus, typingUser }) {
-    const [draft, setDraft] = useState("");
-    const [busy, setBusy] = useState(false);
-    const [reactions, setReactions] = useState({});
-    const deferredQuery = useDeferredValue(query);
-    const textareaRef = useRef(null);
-    const scrollRef = useRef(null);
-    const stickToBottom = useRef(true);
-    const typingStopTimer = useRef(null);
-
-    const conversation = useMemo(() => buildConversation(messages, currentUser, deferredQuery), [messages, currentUser, deferredQuery]);
-    const lastMineMessage = [...conversation.filtered].reverse().find((entry) => entry.isMine);
-    const lastMessage = conversation.filtered[conversation.filtered.length - 1];
-    const deliveryTargetId = lastMineMessage?._clientId || null;
-    const deliveryLabel = deliveryTargetId ? (lastMessage && lastMessage.isMine ? "Seen" : "Delivered") : "";
-    const onlineCount = Math.max(2, new Set(messages.map((entry) => entry.username).filter(Boolean)).size);
-
-    function resizeComposer() {
-        const textarea = textareaRef.current;
-        if (!textarea) {
-            return;
-        }
-        textarea.style.height = "0px";
-        textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
-    }
-
-    function scheduleTypingStop(nextValue) {
-        window.clearTimeout(typingStopTimer.current);
-        if (!nextValue.trim()) {
-            onTyping(false);
-            return;
-        }
-        onTyping(true);
-        typingStopTimer.current = window.setTimeout(() => onTyping(false), 1200);
-    }
-
-    function updateDraft(nextValue) {
-        setDraft(nextValue);
-        window.requestAnimationFrame(resizeComposer);
-        scheduleTypingStop(nextValue);
-    }
-
-    async function submit() {
-        const trimmed = draft.trim();
-        if (!trimmed) {
-            onActionStatus({ tone: "danger", message: "Write a message before sending." });
-            return;
-        }
-        try {
-            setBusy(true);
-            await onSend(trimmed);
-            setDraft("");
-            onTyping(false);
-            window.clearTimeout(typingStopTimer.current);
-            window.requestAnimationFrame(() => {
-                resizeComposer();
-                textareaRef.current?.focus();
-            });
-        } finally {
-            setBusy(false);
-        }
-    }
-
-    function toggleReaction(messageId) {
-        setReactions((current) => {
-            if (current[messageId]) {
-                const next = { ...current };
-                delete next[messageId];
-                return next;
-            }
-            return { ...current, [messageId]: "👍" };
-        });
-    }
-
-    function handleAttach() {
-        onActionStatus({ tone: "neutral", message: "Attachment uploads are the next enhancement for this chat." });
-    }
-
-    function handleEmoji() {
-        const nextDraft = `${draft}${draft ? " " : ""}😊`;
-        setDraft(nextDraft);
-        window.requestAnimationFrame(() => {
-            resizeComposer();
-            textareaRef.current?.focus();
-        });
-        scheduleTypingStop(nextDraft);
-    }
-
-    function handleScroll() {
-        const scroller = scrollRef.current;
-        if (!scroller) {
-            return;
-        }
-        stickToBottom.current = (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight) < 120;
-    }
-
-    useEffect(() => {
-        resizeComposer();
-    }, [draft]);
-
-    useEffect(() => {
-        const scroller = scrollRef.current;
-        if (!scroller) {
-            return;
-        }
-        window.requestAnimationFrame(() => {
-            scroller.scrollTop = scroller.scrollHeight;
-        });
-    }, [isMember]);
-
-    useEffect(() => {
-        const scroller = scrollRef.current;
-        if (!scroller) {
-            return;
-        }
-        if (!stickToBottom.current) {
-            return;
-        }
-        window.requestAnimationFrame(() => {
-            scroller.scrollTo({
-                top: scroller.scrollHeight,
-                behavior: "smooth",
-            });
-        });
-    }, [conversation.rows.length, typingUser]);
-
-    useEffect(() => {
-        return () => {
-            window.clearTimeout(typingStopTimer.current);
-        };
-    }, []);
-
+function HeroPanel({ viewState }) {
+    const detail = viewState === "chat"
+        ? "The secure room is live for active member accounts, while admin controls remain isolated."
+        : viewState === "restricted"
+            ? "Role checks are enforced before the workspace renders, so access states come from session and data, not mock screens."
+            : "Sentinel separates authentication, moderation, and live messaging so teams can collaborate without giving admins message visibility.";
     return e(
         "section",
-        { className: "glass relative overflow-hidden rounded-[2.4rem] p-3 sm:p-4" },
-        e("div", { className: "orb right-8 top-8 h-28 w-28 bg-pulse/25" }),
-        e("div", { className: "chat-surface relative overflow-hidden rounded-[2rem] border border-white/6 shadow-[0_30px_90px_rgba(2,6,23,.55)]" },
-            e("div", { className: "absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-cyan-400/6 to-transparent pointer-events-none" }),
-            e("div", { className: "relative flex items-center justify-between gap-4 border-b border-white/8 px-4 py-4 sm:px-5" },
-                e("div", { className: "flex min-w-0 items-center gap-3" },
-                    e("div", { className: "relative" },
-                        e("div", { className: "grid h-11 w-11 place-items-center rounded-2xl bg-[#2563eb] font-display text-lg font-black text-white shadow-[0_16px_40px_rgba(37,99,235,.35)]" }, "#"),
-                        e("span", { className: "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#020617] bg-emerald-400" })
-                    ),
-                    e("div", { className: "min-w-0" },
-                        e("p", { className: "text-[11px] font-black uppercase tracking-[.22em] text-cyan-200/70" }, isMember ? "Live secure channel" : "Access restricted"),
-                        e("h3", { className: "truncate font-display text-2xl font-black text-white" }, isMember ? "Sentinel live room" : "Message stream locked"),
-                        e("div", { className: "mt-1 flex items-center gap-2 text-sm text-slate-400" },
-                            e("span", { className: "inline-block h-2 w-2 rounded-full bg-emerald-400" }),
-                            e("span", null, isMember ? `${onlineCount} members online` : "Member access required")
-                        )
-                    )
-                ),
-                isMember
-                    ? e("label", { className: "focus-ring flex h-11 min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-slate-300 sm:w-60" },
-                        e(SearchIcon, null),
-                        e("input", {
-                            id: "messageSearch",
-                            value: query,
-                            onChange: (event) => setQuery(event.target.value),
-                            placeholder: "Search messages",
-                            className: "w-full bg-transparent text-sm font-medium text-white placeholder:text-slate-500 focus:outline-none"
-                        })
-                    )
-                    : e(StatusPill, { tone: "danger" }, "Members only")
+        { className: "surface hero" },
+        e("div", { className: "eyebrow" }, "Private collaboration"),
+        e("h1", null, "Messaging with a real ", e("span", { className: "accent-text" }, "permission boundary"), "."),
+        e("p", { className: "hero-copy" }, detail),
+        e("div", { className: "hero-grid" },
+            e("article", { className: "metric-card" },
+                e("div", { className: "metric-label" }, "Routing"),
+                e("div", { className: "metric-value" }, viewState === "chat" ? "Live" : viewState === "restricted" ? "Restricted" : "Auth"),
+                e("div", { className: "metric-copy" }, "The landing route resolves to login, restricted, or chat based on the current session.")
             ),
-            isMember
-                ? e(
-                    "div",
-                    { className: "flex h-[min(72vh,46rem)] flex-col" },
-                    e("div", {
-                        id: "messages",
-                        ref: scrollRef,
-                        onScroll: handleScroll,
-                        className: "chat-scroll flex-1 overflow-y-auto px-4 py-4 sm:px-5"
-                    },
-                        e("div", { className: "flex min-h-full flex-col justify-end gap-3 pb-4" },
-                            conversation.rows.length
-                                ? conversation.rows.map((row) => {
-                                    if (row.type === "day") {
-                                        return e("div", { key: row.id, className: "my-2 flex justify-center" },
-                                            e("span", { className: "rounded-full bg-white/[0.06] px-3 py-1 text-[11px] font-black uppercase tracking-[.18em] text-slate-400 backdrop-blur-sm" }, row.label)
-                                        );
-                                    }
-                                    return e(ChatBubble, {
-                                        key: row.id,
-                                        row,
-                                        reaction: reactions[row.id],
-                                        onReact: toggleReaction,
-                                        showDelivery: row.id === deliveryTargetId ? deliveryLabel : "",
-                                    });
-                                })
-                                : e("div", { className: "grid min-h-[18rem] place-items-center" },
-                                    e("div", { className: "max-w-sm text-center text-slate-400" },
-                                        e("p", { className: "text-xs font-black uppercase tracking-[.2em] text-cyan-200/60" }, "No results"),
-                                        e("p", { className: "mt-3 text-base text-slate-300" }, "No messages match that search. Try a different word or clear the filter.")
-                                    )
-                                )
-                        )
-                    ),
-                    e("div", { className: "border-t border-white/8 bg-gradient-to-t from-[#020617] via-[#020617]/95 to-[#020617]/70 px-4 pb-4 pt-3 backdrop-blur-xl sm:px-5" },
-                        typingUser
-                            ? e("div", { id: "typingIndicator", className: "mb-3 flex items-center gap-2 text-sm text-slate-400" },
-                                e("div", { className: "flex gap-1" },
-                                    e("span", { className: "typing-dot h-1.5 w-1.5 rounded-full bg-cyan-300" }),
-                                    e("span", { className: "typing-dot h-1.5 w-1.5 rounded-full bg-cyan-300" }),
-                                    e("span", { className: "typing-dot h-1.5 w-1.5 rounded-full bg-cyan-300" })
-                                ),
-                                e("span", null, `${typingUser} is typing...`)
-                            )
-                            : e("div", { id: "typingIndicator", className: "sr-only" }),
-                        e("div", { className: "flex items-end gap-3 rounded-[24px] border border-white/8 bg-white/[0.03] p-2 shadow-[0_16px_40px_rgba(2,6,23,.28)] backdrop-blur-xl transition-all duration-200" },
-                            e("button", {
-                                type: "button",
-                                "aria-label": "Add emoji",
-                                onClick: handleEmoji,
-                                className: "focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
-                            }, e(EmojiIcon, null)),
-                            e("button", {
-                                type: "button",
-                                "aria-label": "Attach file",
-                                onClick: handleAttach,
-                                className: "focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
-                            }, e(AttachIcon, null)),
-                            e("textarea", {
-                                id: "msgInput",
-                                ref: textareaRef,
-                                rows: 1,
-                                maxLength: 500,
-                                value: draft,
-                                onChange: (event) => updateDraft(event.target.value),
-                                onBlur: () => onTyping(false),
-                                onKeyDown: (event) => {
-                                    if (event.key === "Enter" && !event.shiftKey) {
-                                        event.preventDefault();
-                                        submit();
-                                    }
-                                },
-                                placeholder: "Message the room",
-                                className: "max-h-36 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-white placeholder:text-slate-500 focus:outline-none"
-                            }),
-                            e("button", {
-                                id: "sendBtn",
-                                type: "button",
-                                "aria-label": "Send message",
-                                onClick: submit,
-                                disabled: busy,
-                                className: "focus-ring grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#2563eb] text-white shadow-[0_18px_42px_rgba(37,99,235,.35)] transition-all duration-200 hover:-translate-y-[1px] hover:bg-[#1d4ed8] disabled:opacity-50"
-                            }, e(SendIcon, null))
-                        )
-                    )
-                )
-                : e(
-                    "div",
-                    { id: "messages", className: "px-4 py-6 sm:px-5" },
-                    e("div", { id: "messageLockState", className: "grid min-h-[24rem] place-items-center" },
-                        e("div", { className: "max-w-md text-center" },
-                            e("p", { className: "text-xs font-black uppercase tracking-[.2em] text-cyan-200/70" }, "Live feed unavailable"),
-                            e("h4", { className: "mt-4 font-display text-3xl font-black text-white" }, "This account cannot view the member message stream."),
-                            e("p", { className: "mt-4 leading-7 text-slate-400" }, "Sign in with an active member account to join realtime chat. If an admin bans a member, the stream closes immediately and the composer disappears.")
-                        )
-                    )
-                )
+            e("article", { className: "metric-card" },
+                e("div", { className: "metric-label" }, "Realtime"),
+                e("div", { className: "metric-value" }, "Socket.IO"),
+                e("div", { className: "metric-copy" }, "Connected members get live messages and admins receive presence updates without touching the chat stream.")
+            ),
+            e("article", { className: "metric-card" },
+                e("div", { className: "metric-label" }, "Persistence"),
+                e("div", { className: "metric-value" }, "MySQL"),
+                e("div", { className: "metric-copy" }, "Role, status, online state, and last seen are backed by the database for deployable behavior.")
+            )
         )
     );
 }
 
-function AuthPanel({ setStatus }) {
+function AuthPanel({ setBanner }) {
     const [mode, setMode] = useState("login");
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [passwordVisible, setPasswordVisible] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [feedback, setFeedback] = useState({ tone: "", message: "" });
 
-    async function handleAuth() {
+    function validate() {
+        if (!username.trim()) {
+            return "Username is required.";
+        }
+        if (mode === "register" && !email.trim()) {
+            return "Email is required.";
+        }
+        if (!password) {
+            return "Password is required.";
+        }
+        if (mode === "register" && password.length < 8) {
+            return "Password must be at least 8 characters.";
+        }
+        return "";
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+        const validationError = validate();
+        if (validationError) {
+            setFeedback({ tone: "error", message: validationError });
+            setBanner({ tone: "error", message: validationError });
+            return;
+        }
+
         try {
             setBusy(true);
-            setStatus({ tone: "neutral", message: mode === "login" ? "Checking secure session..." : "Creating member account..." });
+            setFeedback({ tone: "", message: "" });
+            setBanner({ tone: "neutral", message: mode === "login" ? "Checking your secure session..." : "Creating your workspace access..." });
+
             if (mode === "register") {
-                const result = await postForm("/register", { username, email, password });
-                setStatus({ tone: "good", message: `${result.message}. You can sign in now.` });
+                const payload = await postForm("/register", {
+                    username: username.trim(),
+                    email: email.trim(),
+                    password
+                });
+                setPassword("");
+                setPasswordVisible(false);
                 setMode("login");
+                setFeedback({ tone: "success", message: payload.message + ". Sign in to continue." });
+                setBanner({ tone: "good", message: payload.message + ". Sign in to continue." });
                 return;
             }
 
-            const result = await postForm("/login", { username, password });
-            setStatus({ tone: "good", message: "Login successful. Opening your workspace..." });
-            window.location.href = result.can_manage_members ? "/admin" : "/";
+            const payload = await postForm("/login", {
+                username: username.trim(),
+                password
+            });
+            setBanner({ tone: "good", message: "Login successful. Opening your workspace..." });
+            window.location.href = payload.redirect_to || (payload.can_manage_members ? "/admin" : "/");
         } catch (error) {
-            setStatus({ tone: "danger", message: error.message || "Authentication failed" });
+            const message = error.message || "Authentication failed.";
+            setFeedback({ tone: "error", message });
+            setBanner({ tone: "error", message });
         } finally {
             setBusy(false);
         }
     }
 
     return e(
-        Motion.div,
-        {
-            ...motionProps({ initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 }, transition: { duration: .55, delay: .08 } }),
-            id: "auth-panel",
-            className: "glass relative overflow-hidden rounded-[2.2rem] p-5 sm:p-6"
-        },
-        e("div", { className: "orb -right-10 -top-10 h-32 w-32 bg-pulse/30" }),
-        e("div", { className: "relative" },
-            e("div", { className: "mb-5 flex rounded-full border border-[var(--line)] bg-white/40 p-1 dark:bg-white/8" },
-                e("button", {
-                    id: "loginModeBtn",
-                    type: "button",
-                    onClick: () => setMode("login"),
-                    className: cx("h-12 flex-1 rounded-full text-sm font-black transition", mode === "login" ? "bg-pulse text-ink shadow-glow" : "text-[var(--muted)]")
-                }, "Login"),
-                e("button", {
-                    id: "registerModeBtn",
-                    type: "button",
-                    onClick: () => setMode("register"),
-                    className: cx("h-12 flex-1 rounded-full text-sm font-black transition", mode === "register" ? "bg-pulse text-ink shadow-glow" : "text-[var(--muted)]")
-                }, "Register")
-            ),
-            e("div", { className: "space-y-4" },
-                e(Field, { id: "username", label: "Username", value: username, onChange: setUsername, autoComplete: "username" }),
-                e(Field, { id: "email", label: "Email", type: "email", value: email, onChange: setEmail, autoComplete: "email", hidden: mode !== "register" }),
-                e(Field, { id: "password", label: "Password", type: "password", value: password, onChange: setPassword, autoComplete: mode === "register" ? "new-password" : "current-password" })
-            ),
-            e(Button, {
-                id: "submitAuthBtn",
+        "section",
+        { className: "surface panel", id: "auth-panel" },
+        e("p", { className: "panel-label" }, "Workspace access"),
+        e("h2", { className: "panel-title" }, "Sign in or create a member account."),
+        e("p", { className: "panel-copy" }, "Members enter the live workspace. Admins are routed into a separate moderation console after authentication."),
+        e("div", { className: "segmented", style: { marginTop: "24px" } },
+            e("button", {
+                id: "loginModeBtn",
                 type: "button",
-                onClick: handleAuth,
-                disabled: busy,
-                className: "mt-5 w-full"
-            }, busy ? "Working..." : mode === "register" ? "Create Secure Account" : "Enter Workspace"),
-            e("p", { className: "mt-4 text-center text-sm text-[var(--muted)]" }, "Fresh demo admin: admin / AdminPass123!")
+                className: mode === "login" ? "active" : "",
+                onClick: () => {
+                    setMode("login");
+                    setFeedback({ tone: "", message: "" });
+                }
+            }, "Login"),
+            e("button", {
+                id: "registerModeBtn",
+                type: "button",
+                className: mode === "register" ? "active" : "",
+                onClick: () => {
+                    setMode("register");
+                    setFeedback({ tone: "", message: "" });
+                }
+            }, "Register")
+        ),
+        e(
+            "form",
+            {
+                id: "authForm",
+                method: "POST",
+                action: mode === "register" ? "/register" : "/login",
+                onSubmit: handleSubmit,
+                className: "stack"
+            },
+            e("label", { className: "field", htmlFor: "username" },
+                e("span", { className: "field-label" }, "Username"),
+                e("input", {
+                    id: "username",
+                    name: "username",
+                    className: "input",
+                    autoComplete: "username",
+                    value: username,
+                    onChange: (event) => setUsername(event.target.value),
+                    placeholder: "Enter your username"
+                })
+            ),
+            mode === "register"
+                ? e("label", { className: "field", htmlFor: "email" },
+                    e("span", { className: "field-label" }, "Email"),
+                    e("input", {
+                        id: "email",
+                        name: "email",
+                        type: "email",
+                        className: "input",
+                        autoComplete: "email",
+                        value: email,
+                        onChange: (event) => setEmail(event.target.value),
+                        placeholder: "team@example.com"
+                    })
+                )
+                : null,
+            e("label", { className: "field", htmlFor: "password" },
+                e("span", { className: "field-label" }, "Password"),
+                e("div", { className: "input-shell" },
+                    e("input", {
+                        id: "password",
+                        name: "password",
+                        type: passwordVisible ? "text" : "password",
+                        className: "input",
+                        autoComplete: mode === "register" ? "new-password" : "current-password",
+                        value: password,
+                        onChange: (event) => setPassword(event.target.value),
+                        placeholder: "Enter your password",
+                        style: password ? { paddingRight: "56px" } : null
+                    }),
+                    password
+                        ? e("button", {
+                            id: "passwordToggle",
+                            type: "button",
+                            className: "password-toggle",
+                            "aria-label": passwordVisible ? "Hide password" : "Show password",
+                            onClick: () => setPasswordVisible((current) => !current)
+                        }, e(EyeIcon, { visible: passwordVisible }))
+                        : null
+                )
+            ),
+            feedback.message
+                ? e("div", {
+                    className: cx("inline-alert", feedback.tone === "error" ? "error" : "success"),
+                    role: "alert"
+                }, feedback.message)
+                : null,
+            e("div", { className: "form-meta" },
+                e("span", { className: "helper-text" }, mode === "register" ? "New accounts start as active members." : "Press Enter to submit securely."),
+                e(Button, {
+                    id: "submitAuthBtn",
+                    type: "submit",
+                    loading: busy,
+                    disabled: busy
+                }, busy ? "Working..." : mode === "register" ? "Create Account" : "Enter Workspace")
+            )
+        ),
+        e("ul", { className: "security-list" },
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Only active member sessions can load the realtime chat workspace.")),
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Admins authenticate normally but stay inside an access-control console.")),
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Form requests are CSRF-protected and the client refreshes secure tokens automatically."))
+        )
+    );
+}
+
+function RestrictedPanel({ state, onLogout }) {
+    return e(
+        "section",
+        { className: "surface panel" },
+        e("p", { className: "panel-label" }, state.eyebrow || "Restricted route"),
+        e("h2", { className: "panel-title" }, state.title || "Access is restricted."),
+        e("p", { className: "panel-copy" }, state.message || "This route is unavailable for the current session."),
+        e("ul", { className: "restriction-list" },
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Member chat is only rendered for active member sessions.")),
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Admin tools stay separated from the message stream.")),
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Banned sessions are invalidated and removed from realtime access immediately."))
+        ),
+        e("div", { className: "restriction-actions" },
+            state.action_href
+                ? e("a", { href: state.action_href, className: "action-link" }, state.action_label || "Open")
+                : null,
+            e(Button, {
+                id: "logoutBtn",
+                type: "button",
+                variant: "secondary",
+                onClick: onLogout
+            }, "Logout")
+        )
+    );
+}
+
+function MessageRow({ message, currentUser }) {
+    const mine = (message.username || "").toLowerCase() === (currentUser || "").toLowerCase();
+    return e(
+        "article",
+        { className: cx("message-row", mine && "mine") },
+        e("div", { className: "message-card" },
+            e("div", { className: "message-user" }, mine ? "You" : message.username || "Member"),
+            e("p", { className: "message-text" }, message.message || ""),
+            e("div", { className: "message-meta" }, formatMessageTime(message.created_at))
+        )
+    );
+}
+
+function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAccessRevoked }) {
+    const [messages, setMessages] = useState(normalizeMessages(initialMessages));
+    const [query, setQuery] = useState("");
+    const [draft, setDraft] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [typingUser, setTypingUser] = useState("");
+    const socketRef = useRef(null);
+    const typingTimer = useRef(null);
+    const localTypingTimer = useRef(null);
+    const messageListRef = useRef(null);
+    const accessRevokedRef = useRef(onAccessRevoked);
+
+    useEffect(() => {
+        accessRevokedRef.current = onAccessRevoked;
+    }, [onAccessRevoked]);
+
+    const filteredMessages = useMemo(() => {
+        const needle = query.trim().toLowerCase();
+        if (!needle) {
+            return messages;
+        }
+        return messages.filter((entry) => {
+            const haystack = `${entry.username || ""} ${entry.message || ""}`.toLowerCase();
+            return haystack.includes(needle);
+        });
+    }, [messages, query]);
+
+    useEffect(() => {
+        if (!window.io) {
+            return undefined;
+        }
+        const socket = window.io({ transports: ["websocket", "polling"] });
+        socketRef.current = socket;
+
+        socket.on("connect", () => {
+            setBanner({ tone: "good", message: "Realtime workspace connected." });
+        });
+        socket.on("system", (payload) => {
+            setBanner({ tone: "good", message: payload?.message || "Connected to real-time server." });
+        });
+        socket.on("connect_error", () => {
+            setBanner({ tone: "error", message: "Realtime connection is retrying." });
+        });
+        socket.on("new_message", (payload) => {
+            setMessages((current) => current.concat(payload));
+        });
+        socket.on("typing", (payload) => {
+            if (!payload?.active) {
+                setTypingUser("");
+                return;
+            }
+            setTypingUser(payload.username || "A teammate");
+            window.clearTimeout(typingTimer.current);
+            typingTimer.current = window.setTimeout(() => setTypingUser(""), 1600);
+        });
+        socket.on("access_revoked", (payload) => {
+            const message = payload?.message || "Your access has been revoked.";
+            accessRevokedRef.current(message);
+            socket.disconnect();
+        });
+        socket.on("disconnect", () => {
+            setBanner({ tone: "neutral", message: "Realtime channel disconnected." });
+        });
+
+        return () => {
+            window.clearTimeout(typingTimer.current);
+            window.clearTimeout(localTypingTimer.current);
+            socket.disconnect();
+            socketRef.current = null;
+        };
+    }, [setBanner]);
+
+    useEffect(() => {
+        const node = messageListRef.current;
+        if (node) {
+            node.scrollTop = node.scrollHeight;
+        }
+    }, [filteredMessages, typingUser]);
+
+    function emitTyping(active) {
+        const socket = socketRef.current;
+        if (socket && socket.connected) {
+            socket.emit("typing", { active: Boolean(active) });
+        }
+    }
+
+    function handleDraftChange(nextValue) {
+        setDraft(nextValue);
+        emitTyping(Boolean(nextValue.trim()));
+        window.clearTimeout(localTypingTimer.current);
+        localTypingTimer.current = window.setTimeout(() => emitTyping(false), 900);
+    }
+
+    async function submit(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        const message = draft.trim();
+        if (!message) {
+            setBanner({ tone: "error", message: "Enter a message before sending." });
+            return;
+        }
+
+        try {
+            setBusy(true);
+            await postForm("/submit", { new_message: message });
+            setDraft("");
+            emitTyping(false);
+            setBanner({ tone: "good", message: "Message sent to connected members." });
+        } catch (error) {
+            const messageText = error.message || "Message delivery failed.";
+            if (messageText.toLowerCase().includes("banned")) {
+                onAccessRevoked(messageText);
+                return;
+            }
+            setBanner({ tone: "error", message: messageText });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return e(
+        "section",
+        { className: "surface panel workspace" },
+        e("div", { className: "workspace-header" },
+            e("div", null,
+                e("p", { className: "panel-label" }, "Member workspace"),
+                e("h2", { className: "panel-title", style: { marginTop: "8px" } }, "Realtime room for active members."),
+                e("p", { className: "panel-copy", style: { marginTop: "12px" } }, "Search recent messages, send updates, and watch the connection state in real time.")
+            ),
+            e("div", { className: "workspace-meta" },
+                e("span", { className: "chip chip-good" }, "Live"),
+                e("span", { className: "chip chip-neutral" }, currentUser || "Member"),
+                e(Button, {
+                    id: "logoutBtn",
+                    type: "button",
+                    variant: "secondary",
+                    onClick: onLogout
+                }, "Logout")
+            )
+        ),
+        e("div", { className: "search-row" },
+            e("input", {
+                id: "messageSearch",
+                className: "search-input",
+                value: query,
+                onChange: (event) => setQuery(event.target.value),
+                placeholder: "Search messages or usernames"
+            })
+        ),
+        e("div", { id: "messages", ref: messageListRef, className: "messages" },
+            filteredMessages.length
+                ? filteredMessages.map((message, index) => e(MessageRow, {
+                    key: `${message.username || "member"}-${message.created_at || "now"}-${index}`,
+                    message,
+                    currentUser
+                }))
+                : e("div", { className: "empty-state" }, "No messages match the current search.")
+        ),
+        e("div", { id: "typingIndicator", className: "typing-indicator" }, typingUser ? `${typingUser} is typing...` : ""),
+        e("div", { className: "composer" },
+            e("form", { className: "composer-form", onSubmit: submit },
+                e("textarea", {
+                    id: "msgInput",
+                    className: "composer-textarea",
+                    value: draft,
+                    maxLength: 500,
+                    onChange: (event) => handleDraftChange(event.target.value),
+                    onBlur: () => emitTyping(false),
+                    onKeyDown: (event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            submit(event);
+                        }
+                    },
+                    placeholder: "Write a secure update"
+                }),
+                e("div", { className: "status-row" },
+                    e("span", { className: "status-text" }, "Enter sends. Shift+Enter adds a new line."),
+                    e(Button, {
+                        id: "sendBtn",
+                        type: "submit",
+                        loading: busy,
+                        disabled: busy
+                    }, busy ? "Sending..." : "Send message")
+                )
+            )
         )
     );
 }
 
 function App() {
-    const [theme, setThemeState] = useState(localStorage.getItem("sentinel-theme") || "dark");
-    const [hasMemberAccess, setHasMemberAccess] = useState(Boolean(bootstrap.canViewMessages));
-    const [status, setStatus] = useState({ tone: "neutral", message: bootstrap.canViewMessages ? "Real-time workspace ready." : "Message stream locked. Sign in with an active member account." });
-    const [messages, setMessages] = useState(normalizeMessages(Array.isArray(bootstrap.messages) ? bootstrap.messages : []));
-    const [query, setQuery] = useState("");
-    const [typingUser, setTypingUser] = useState("");
-    const socketRef = useRef(null);
-    const typingTimer = useRef(null);
-    const accessRevoked = useRef(false);
-    const currentUser = bootstrap.currentUser || "";
+    const [theme, setTheme] = useState(localStorage.getItem("sentinel-theme") || "light");
+    const [banner, setBanner] = useState(() => {
+        if (bootstrap.viewState === "chat") {
+            return { tone: "neutral", message: "Member workspace ready." };
+        }
+        if (bootstrap.viewState === "restricted") {
+            return { tone: "neutral", message: bootstrap.restrictedState?.message || "This route is restricted." };
+        }
+        return { tone: "neutral", message: "Authenticate to enter the secure workspace." };
+    });
+    const [viewState, setViewState] = useState(bootstrap.viewState || "auth");
+    const [restrictedState, setRestrictedState] = useState(bootstrap.restrictedState || {});
 
     useEffect(() => {
         document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem("sentinel-theme", theme);
     }, [theme]);
 
-    useEffect(() => {
-        if (!hasMemberAccess || !window.io) {
-            return;
-        }
-        const socket = window.io({ autoConnect: true, transports: ["websocket", "polling"] });
-        socketRef.current = socket;
-        socket.on("connect", () => setStatus({ tone: "good", message: "Real-time channel connected." }));
-        socket.on("system", (data) => setStatus({ tone: "good", message: data.message || "Connected to real-time server." }));
-        socket.on("connect_error", () => setStatus({ tone: "danger", message: "Real-time channel is retrying." }));
-        socket.on("access_revoked", (data) => {
-            accessRevoked.current = true;
-            setHasMemberAccess(false);
-            setMessages([]);
-            setQuery("");
-            setTypingUser("");
-            setStatus({ tone: "danger", message: data?.message || "Your access has been revoked." });
-            socket.disconnect();
-        });
-        socket.on("disconnect", () => {
-            if (accessRevoked.current) {
-                setStatus({ tone: "danger", message: "Access revoked. The member stream is now locked." });
-                return;
-            }
-            setStatus({ tone: "danger", message: "Real-time channel disconnected. Reconnecting..." });
-        });
-        socket.on("new_message", (entry) => {
-            startTransition(() => {
-                setMessages((current) => [...current, hydrateLiveMessage(entry)]);
-            });
-        });
-        socket.on("typing", (data) => {
-            if (!data?.active) {
-                setTypingUser("");
-                return;
-            }
-            setTypingUser(data.username || "A teammate");
-            window.clearTimeout(typingTimer.current);
-            typingTimer.current = window.setTimeout(() => setTypingUser(""), 1800);
-        });
-        return () => {
-            socketRef.current = null;
-            socket.disconnect();
-        };
-    }, [hasMemberAccess]);
-
-    function emitTyping(active) {
-        const socket = socketRef.current;
-        if (socket && socket.connected) {
-            socket.emit("typing", { active });
-        }
-    }
-
-    async function sendMessage(message) {
-        try {
-            await postForm("/submit", { new_message: message });
-            emitTyping(false);
-            setStatus({ tone: "good", message: "Message sent to connected members." });
-        } catch (error) {
-            if ((error.message || "").toLowerCase().includes("banned")) {
-                accessRevoked.current = true;
-                setHasMemberAccess(false);
-                setMessages([]);
-                setQuery("");
-                setTypingUser("");
-            }
-            setStatus({ tone: "danger", message: error.message || "Message failed." });
-            throw error;
-        }
-    }
-
     async function logout() {
         try {
-            await postForm("/logout");
+            await postForm("/logout", {});
             window.location.href = "/";
         } catch (error) {
-            setStatus({ tone: "danger", message: error.message || "Logout failed." });
+            setBanner({ tone: "error", message: error.message || "Logout failed." });
         }
     }
 
-    const isMember = hasMemberAccess;
-    const statusTone = status.tone === "good" ? "good" : status.tone === "danger" ? "danger" : "neutral";
+    function handleAccessRevoked(message) {
+        setRestrictedState({
+            eyebrow: "Access revoked",
+            title: "Your member session has been closed.",
+            message: message || "This account can no longer open the message stream.",
+            action_label: "",
+            action_href: ""
+        });
+        setViewState("restricted");
+        setBanner({ tone: "error", message: "Access revoked. The member stream is now locked." });
+    }
 
     return e(
         "main",
-        { className: "relative mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8" },
-        e("nav", { className: "relative z-10 flex items-center justify-between gap-4 py-3" },
-            e("div", { className: "flex items-center gap-3" },
-                e("div", { className: "grid h-12 w-12 place-items-center rounded-2xl bg-pulse font-display text-xl font-black text-ink shadow-glow" }, "S"),
-                e("div", null,
-                    e("div", { className: "font-display text-xl font-black" }, "Sentinel"),
-                    e("div", { className: "text-xs font-black uppercase tracking-[.2em] text-[var(--muted)]" }, "Private team OS")
+        { className: "shell" },
+        e("header", { className: "topbar" },
+            e("div", { className: "brand" },
+                e("div", { className: "brand-mark" }, "S"),
+                e("div", { className: "brand-meta" },
+                    e("h1", { className: "brand-title" }, "Sentinel Access"),
+                    e("strong", null, "Secure messaging workspace")
                 )
             ),
-            e("div", { className: "flex items-center gap-2" },
-                e(StatusPill, { tone: isMember ? "good" : "neutral" }, isMember ? `${bootstrap.currentUser} / ${bootstrap.currentRole}` : "Guest"),
-                e(Button, { id: "themeBtn", type: "button", variant: "secondary", onClick: () => setThemeState(theme === "dark" ? "light" : "dark"), className: "px-4" }, theme === "dark" ? "Light" : "Dark"),
-                isMember ? e(Button, { id: "logoutBtn", type: "button", variant: "secondary", onClick: logout, className: "hidden px-4 sm:inline-flex" }, "Logout") : null
-            )
-        ),
-        e(Motion.section, {
-            ...motionProps({ initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 }, transition: { duration: .6 } }),
-            className: "grid gap-8 py-10 lg:grid-cols-[.92fr_1.08fr] lg:items-center lg:py-16"
-        },
-            e("div", { className: "relative" },
-                e("div", { className: "mb-5 inline-flex rounded-full border border-pulse/30 bg-pulse/10 px-4 py-2 text-xs font-black uppercase tracking-[.2em] text-cyan-700 dark:text-cyan-200" }, "Role-safe messaging"),
-                e("h1", { className: "max-w-4xl font-display text-5xl font-black leading-[.9] tracking-[-.06em] sm:text-7xl lg:text-8xl" },
-                    "Secure chat that ",
-                    e("span", { className: "gradient-text" }, "doesn't overtrust admins"),
-                    "."
-                ),
-                e("p", { className: "mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)] sm:text-xl" }, "Members collaborate in real time. Admins moderate access. Private messages stay private by design."),
-                e("div", { className: "mt-8 flex flex-col gap-3 sm:flex-row" },
-                    e(Button, {
-                        type: "button",
-                        onClick: () => document.getElementById(isMember ? "msgInput" : "auth-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                        className: "text-base"
-                    }, isMember ? "Send A Live Update" : "Try Live Demo"),
-                    e(Button, {
-                        type: "button",
-                        variant: "secondary",
-                        onClick: () => document.getElementById("privacy-story")?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                        className: "text-base"
-                    }, "View Privacy Model")
-                ),
-                e("div", { className: "mt-8 grid gap-3 sm:grid-cols-3" },
-                    e(MetricCard, { label: "Boundary", value: isMember ? "Member" : "Split", detail: "Chat and moderation are separate." }),
-                    e(MetricCard, { label: "Requests", value: "CSRF", detail: "Fresh-token recovery is built in." }),
-                    e(MetricCard, { label: "Realtime", value: isMember ? "Live" : "Ready", detail: "Bottom-stacked chat keeps the latest message in focus." })
-                )
-            ),
-            e("div", { className: "space-y-5" },
-                isMember ? null : e(AuthPanel, { setStatus }),
-                e(ProductPreview, {
-                    messages,
-                    isMember,
-                    currentUser,
-                    query,
-                    setQuery,
-                    onSend: sendMessage,
-                    onTyping: emitTyping,
-                    onActionStatus: setStatus,
-                    typingUser,
+            e("div", { className: "topbar-actions" },
+                bootstrap.currentUser
+                    ? e("span", { className: cx("chip", viewState === "chat" ? "chip-good" : "chip-neutral") }, `${bootstrap.currentUser} / ${bootstrap.currentRole}`)
+                    : e("span", { className: "chip chip-neutral" }, "Guest session"),
+                e(ThemeToggle, {
+                    theme,
+                    onToggle: () => setTheme((current) => current === "dark" ? "light" : "dark")
                 })
             )
         ),
-        e("section", { id: "privacy-story", className: "grid gap-4 pb-14 md:grid-cols-3" },
-            [
-                ["01", "Moderation without surveillance", "Admins can ban, unban, and review members without entering the message stream. If a member is banned, chat access closes immediately."],
-                ["02", "Fast recovery from stale sessions", "The client refreshes CSRF tokens automatically instead of failing silently."],
-                ["03", "Designed for a real demo", "The interface leads with value, then proves it with live chat, search, status, and tests."]
-            ].map(([number, title, body]) => e(
-                Motion.div,
-                {
-                    key: number,
-                    ...motionProps({ whileHover: { y: -6 } }),
-                    className: "glass rounded-[2rem] p-6 transition"
-                },
-                e("div", { className: "mb-8 text-sm font-black text-pulse" }, number),
-                e("h3", { className: "font-display text-2xl font-black" }, title),
-                e("p", { className: "mt-3 leading-7 text-[var(--muted)]" }, body)
-            ))
+        e("section", { className: "layout" },
+            e(HeroPanel, { viewState }),
+            viewState === "chat"
+                ? e(ChatWorkspace, {
+                    initialMessages: bootstrap.messages || [],
+                    currentUser: bootstrap.currentUser || "",
+                    setBanner,
+                    onLogout: logout,
+                    onAccessRevoked: handleAccessRevoked
+                })
+                : viewState === "restricted"
+                    ? e(RestrictedPanel, {
+                        state: restrictedState,
+                        onLogout: logout
+                    })
+                    : e(AuthPanel, { setBanner })
         ),
-        e("div", { className: cx("fixed bottom-5 left-1/2 z-50 w-[min(92vw,42rem)] -translate-x-1/2 rounded-full border px-5 py-3 text-center text-sm font-bold shadow-soft backdrop-blur-xl", statusTone === "danger" ? "border-rose-400/30 bg-rose-500/15 text-rose-700 dark:text-rose-100" : statusTone === "good" ? "border-pulse/30 bg-pulse/15 text-cyan-900 dark:text-cyan-50" : "border-[var(--line)] bg-white/70 text-[var(--muted)] dark:bg-ink/80") }, status.message)
+        e("div", { className: cx("status-banner", banner.tone === "good" ? "good" : banner.tone === "error" ? "error" : "neutral") }, banner.message)
     );
 }
 
