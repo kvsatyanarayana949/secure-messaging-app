@@ -7,11 +7,14 @@ CREATE TABLE users (
     username VARCHAR(30) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('user','admin') NOT NULL DEFAULT 'user',
+    role ENUM('admin','member') NOT NULL DEFAULT 'member',
+    status ENUM('active','banned') NOT NULL DEFAULT 'active',
     is_banned BOOLEAN NOT NULL DEFAULT FALSE,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    is_online BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP NULL DEFAULT NULL,
+    last_seen DATETIME NULL DEFAULT NULL,
     last_login_ip VARCHAR(45) NULL,
     CHECK (CHAR_LENGTH(username) BETWEEN 3 AND 30)
 ) ENGINE=InnoDB;
@@ -39,7 +42,8 @@ CREATE TABLE logs (
         ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_users_role_banned ON users(role, is_banned);
+CREATE INDEX idx_users_role_status ON users(role, status);
+CREATE INDEX idx_users_status_online ON users(status, is_online);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_created_at ON users(created_at);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
@@ -51,13 +55,13 @@ CREATE INDEX idx_logs_event_created ON logs(event_type, created_at);
 -- Default bootstrap admin:
 -- username: admin
 -- password: AdminPass123!
-INSERT INTO users (username, email, password_hash, role, is_banned, is_deleted)
+INSERT INTO users (username, email, password_hash, role, status, is_banned, is_deleted)
 VALUES (
     'admin',
     'admin@sentinel.local',
     'scrypt:32768:8:1$WryXFwfi5OkUD5aE$cd5a917f7825f8a334c0317f9aaf505435022b92ba8ae59cb691bf6a596bb566e06b5a8808db6817db7ba51e6d0cc1956059ac8e09b27d23efe0469931e2baf0',
     'admin',
+    'active',
     FALSE,
     FALSE
 );
-
