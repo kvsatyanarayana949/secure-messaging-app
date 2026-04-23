@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .auth import (
     admin_required_json,
+    get_active_user_record,
     get_session_value,
     is_admin_session,
     is_member_session,
@@ -14,11 +15,15 @@ from .auth import (
     member_required_json,
 )
 from .data import (
+    ACTIVE_STATUS,
+    BANNED_STATUS,
+    MEMBER_ROLE,
     build_member_stats,
     commit_or_rollback,
     fetch_recent_messages,
     fetch_users,
     get_cursor,
+    normalize_user_record,
     write_log,
 )
 from .extensions import limiter, socketio
@@ -38,12 +43,52 @@ def serialize_records(records):
     return serialized
 
 
+def build_restriction_content(user):
+    normalized = normalize_user_record(user)
+    if not normalized:
+        return {
+            "eyebrow": "Authentication required",
+            "title": "Sign in to continue.",
+            "message": "Use an active member account to open the secure workspace.",
+            "action_label": "",
+            "action_href": "",
+        }
+
+    if normalized["status"] == BANNED_STATUS:
+        return {
+            "eyebrow": "Access revoked",
+            "title": "This account is blocked.",
+            "message": "A banned account cannot enter the member workspace until an administrator restores access.",
+            "action_label": "",
+            "action_href": "",
+        }
+
+    if normalized["role"] == "admin":
+        return {
+            "eyebrow": "Restricted route",
+            "title": "Admins cannot open the member message stream.",
+            "message": "This route is reserved for active member accounts. Use the admin console to manage access and monitor presence.",
+            "action_label": "Open Admin Dashboard",
+            "action_href": "/admin",
+        }
+
+    return {
+        "eyebrow": "Restricted route",
+        "title": "This session cannot enter the workspace.",
+        "message": "Sign back in with an active member account to restore access.",
+        "action_label": "",
+        "action_href": "",
+    }
+
+
 def register_context_processors(app):
     @app.context_processor
     def inject_user():
+        user = get_active_user_record()
         return {
-            "current_user": get_session_value("username"),
-            "current_role": get_session_value("role", "guest"),
+            "current_user": user["username"] if user else None,
+            "current_role": user["role"] if user else "guest",
+            "current_status": user["status"] if user else None,
             "can_view_messages": is_member_session(),
         }
 
@@ -71,16 +116,26 @@ def register_error_handlers(app):
 def register_routes(app):
     @app.route("/")
     def home():
-        if is_admin_session():
-            return redirect(url_for("admin_dashboard"))
-
+        user = get_active_user_record()
         messages = []
-        if is_member_session():
+        view_state = "auth"
+        restricted = build_restriction_content(None)
+        if user and user["role"] == MEMBER_ROLE and user["status"] == ACTIVE_STATUS:
+            view_state = "chat"
             try:
                 messages = fetch_recent_messages()
             except Exception:
                 app.logger.error(traceback.format_exc())
-        return render_template("index.html", messages=serialize_records(messages))
+        elif user:
+            view_state = "restricted"
+            restricted = build_restriction_content(user)
+
+        return render_template(
+            "index.html",
+            messages=serialize_records(messages),
+            view_state=view_state,
+            restricted_state=restricted,
+        )
 
     @app.route("/admin", methods=["GET"])
     def admin_dashboard():
@@ -89,10 +144,10 @@ def register_routes(app):
 
         members = []
         stats = {
+            "active_users": 0,
             "total_members": 0,
-            "active_members": 0,
-            "banned_members": 0,
-            "admin_count": 0,
+            "banned_users": 0,
+            "offline_users": 0,
         }
         try:
             members = serialize_records(fetch_users())
@@ -128,9 +183,9 @@ def register_routes(app):
             cur = get_cursor()
             hashed = generate_password_hash(password)
             cur.execute(
-                "INSERT INTO users (username, email, password_hash, role, is_banned, is_deleted) "
-                "VALUES (%s,%s,%s,%s,%s,%s)",
-                (username, email, hashed, "user", False, False),
+                "INSERT INTO users (username, email, password_hash, role, status, is_banned, is_deleted) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                (username, email, hashed, MEMBER_ROLE, ACTIVE_STATUS, False, False),
             )
             write_log(cur, "REGISTER_SUCCESS", username=username, status="success")
             commit_or_rollback(success=True)
@@ -158,22 +213,22 @@ def register_routes(app):
         try:
             cur = get_cursor()
             cur.execute(
-                "SELECT id, username, email, password_hash, role, is_banned, is_deleted "
+                "SELECT id, username, email, password_hash, role, status, is_banned, is_deleted "
                 "FROM users WHERE username=%s",
                 (username,),
             )
-            user = cur.fetchone()
+            user = normalize_user_record(cur.fetchone())
 
             if not user or user["is_deleted"]:
-                return jsonify({"status": "error", "message": "User not found"}), 404
-            if user["is_banned"]:
+                return jsonify({"status": "error", "message": "Invalid username or password"}), 401
+            if user["status"] == BANNED_STATUS:
                 write_log(cur, "BANNED_LOGIN", username=username, user_id=user["id"], status="blocked")
                 commit_or_rollback(success=True)
                 return jsonify({"status": "error", "message": "You are banned"}), 403
             if not check_password_hash(user["password_hash"], password):
                 write_log(cur, "LOGIN_FAILED", username=username, user_id=user["id"], status="fail")
                 commit_or_rollback(success=True)
-                return jsonify({"status": "error", "message": "Wrong password"}), 401
+                return jsonify({"status": "error", "message": "Invalid username or password"}), 401
 
             csrf_token_value = session.get("csrf_token")
             session.clear()
@@ -196,8 +251,9 @@ def register_routes(app):
                     "status": "success",
                     "username": user["username"],
                     "role": user["role"],
-                    "can_view_messages": user["role"] == "user",
+                    "can_view_messages": user["role"] == MEMBER_ROLE,
                     "can_manage_members": user["role"] == "admin",
+                    "redirect_to": "/admin" if user["role"] == "admin" else "/",
                 }
             ), 200
         except Exception:
@@ -313,20 +369,31 @@ def register_routes(app):
                 "SELECT id, role FROM users WHERE username=%s AND is_deleted=FALSE",
                 (username,),
             )
-            user = cur.fetchone()
+            user = normalize_user_record(cur.fetchone())
             if not user:
                 return jsonify({"status": "error", "message": "User not found"}), 404
             if user["role"] == "admin":
                 return jsonify({"status": "error", "message": "Cannot ban another admin"}), 400
 
             cur.execute(
-                "UPDATE users SET is_banned=TRUE WHERE username=%s AND is_deleted=FALSE",
+                "UPDATE users SET status=%s, is_banned=TRUE, is_online=FALSE, last_seen=NOW() "
+                "WHERE username=%s AND is_deleted=FALSE",
+                (BANNED_STATUS, username),
+            )
+            cur.execute(
+                "SELECT username, email, role, status, is_banned, is_online, last_seen, created_at, last_login_at "
+                "FROM users WHERE username=%s AND is_deleted=FALSE",
                 (username,),
             )
+            updated_user = normalize_user_record(cur.fetchone())
             write_log(cur, "USER_BANNED", username=username, status="success")
             commit_or_rollback(success=True)
+            socketio.emit("roster_refresh", {"reason": "user_banned"}, room="admins")
             disconnect_member_sessions(user.get("id"))
-            return jsonify({"status": "success"}), 200
+            return jsonify({
+                "status": "success",
+                "user": serialize_records([updated_user])[0] if updated_user else None,
+            }), 200
         except Exception:
             commit_or_rollback(success=False)
             app.logger.error(traceback.format_exc())
@@ -346,20 +413,31 @@ def register_routes(app):
         try:
             cur = get_cursor()
             cur.execute(
-                "SELECT role FROM users WHERE username=%s AND is_deleted=FALSE",
+                "SELECT id, username, role, status, is_banned, is_deleted FROM users "
+                "WHERE username=%s AND is_deleted=FALSE",
                 (username,),
             )
-            user = cur.fetchone()
+            user = normalize_user_record(cur.fetchone())
             if not user:
                 return jsonify({"status": "error", "message": "User not found"}), 404
 
             cur.execute(
-                "UPDATE users SET is_banned=FALSE WHERE username=%s AND is_deleted=FALSE",
+                "UPDATE users SET status=%s, is_banned=FALSE WHERE username=%s AND is_deleted=FALSE",
+                (ACTIVE_STATUS, username),
+            )
+            cur.execute(
+                "SELECT username, email, role, status, is_banned, is_online, last_seen, created_at, last_login_at "
+                "FROM users WHERE username=%s AND is_deleted=FALSE",
                 (username,),
             )
+            updated_user = normalize_user_record(cur.fetchone())
             write_log(cur, "USER_UNBANNED", username=username, status="success")
             commit_or_rollback(success=True)
-            return jsonify({"status": "success"}), 200
+            socketio.emit("roster_refresh", {"reason": "user_unbanned"}, room="admins")
+            return jsonify({
+                "status": "success",
+                "user": serialize_records([updated_user])[0] if updated_user else None,
+            }), 200
         except Exception:
             commit_or_rollback(success=False)
             app.logger.error(traceback.format_exc())
