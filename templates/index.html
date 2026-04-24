@@ -15,12 +15,14 @@
     --page: #f5f7f8;
     --surface: rgba(255, 255, 255, 0.9);
     --surface-strong: #ffffff;
+    --surface-muted: rgba(244, 248, 250, 0.88);
     --text: #12202a;
     --muted: #60717b;
     --line: rgba(18, 32, 42, 0.12);
     --line-strong: rgba(18, 32, 42, 0.2);
     --accent: #12b7d5;
     --accent-strong: #0891b2;
+    --accent-ink: #042431;
     --accent-soft: rgba(18, 183, 213, 0.1);
     --danger: #dc2626;
     --danger-soft: rgba(220, 38, 38, 0.09);
@@ -34,12 +36,14 @@
     --page: #071219;
     --surface: rgba(12, 24, 33, 0.86);
     --surface-strong: #0e1c25;
+    --surface-muted: rgba(9, 20, 29, 0.92);
     --text: #f5fbff;
     --muted: #90a5b2;
     --line: rgba(191, 228, 240, 0.12);
     --line-strong: rgba(191, 228, 240, 0.22);
     --accent: #34d6f7;
     --accent-strong: #67e8f9;
+    --accent-ink: #06202b;
     --accent-soft: rgba(52, 214, 247, 0.14);
     --danger: #fb7185;
     --danger-soft: rgba(251, 113, 133, 0.12);
@@ -551,6 +555,514 @@ body::before {
     font-size: 0.94rem;
     color: var(--muted);
 }
+.shell-chat {
+    width: min(1440px, calc(100vw - 32px));
+    padding-bottom: 32px;
+}
+.chat-frame {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: stretch;
+}
+.chat-sidebar,
+.chat-stage {
+    min-height: calc(100vh - 56px);
+}
+.chat-sidebar {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    gap: 20px;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top right, rgba(18, 183, 213, 0.12), transparent 10rem),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.82), var(--surface-muted));
+}
+[data-theme="dark"] .chat-sidebar {
+    background:
+        radial-gradient(circle at top right, rgba(52, 214, 247, 0.12), transparent 10rem),
+        linear-gradient(180deg, rgba(13, 24, 33, 0.96), rgba(7, 16, 23, 0.9));
+}
+.chat-stage {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    padding: 0;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 250, 252, 0.86));
+}
+[data-theme="dark"] .chat-stage {
+    background:
+        linear-gradient(180deg, rgba(14, 28, 37, 0.94), rgba(8, 18, 25, 0.92));
+}
+.chat-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.chat-brand-copy {
+    display: grid;
+    gap: 4px;
+}
+.chat-kicker,
+.sidebar-label,
+.conversation-kicker,
+.date-divider {
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+.chat-kicker,
+.sidebar-label,
+.conversation-kicker {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.chat-sidebar-title {
+    margin: 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.42rem;
+    line-height: 1;
+}
+.chat-sidebar-copy,
+.sidebar-copy,
+.participant-copy,
+.room-copy,
+.search-summary,
+.composer-hint,
+.composer-count {
+    color: var(--muted);
+}
+.chat-user-card,
+.sidebar-card,
+.participant-row,
+.composer-card {
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-md);
+}
+.chat-user-card {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.62);
+}
+[data-theme="dark"] .chat-user-card {
+    background: rgba(255, 255, 255, 0.03);
+}
+.chat-user-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.avatar-badge,
+.participant-avatar {
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: var(--accent-ink);
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-weight: 800;
+}
+.avatar-badge {
+    width: 52px;
+    height: 52px;
+    font-size: 1.15rem;
+}
+.participant-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.95rem;
+}
+.chat-user-name,
+.participant-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+}
+.chat-user-copy {
+    margin: 4px 0 0;
+    color: var(--muted);
+    line-height: 1.5;
+}
+.sidebar-pill-row,
+.room-meta,
+.composer-meta,
+.participant-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.live-pill,
+.room-badge,
+.meta-pill,
+.participant-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+.live-pill.good,
+.participant-pill.good {
+    background: var(--success-soft);
+    color: var(--success);
+}
+.live-pill.neutral,
+.room-badge,
+.meta-pill,
+.participant-pill {
+    background: rgba(255, 255, 255, 0.44);
+}
+[data-theme="dark"] .live-pill.neutral,
+[data-theme="dark"] .room-badge,
+[data-theme="dark"] .meta-pill,
+[data-theme="dark"] .participant-pill {
+    background: rgba(255, 255, 255, 0.04);
+}
+.live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 0 currentColor;
+    animation: pulse 1.8s ease infinite;
+}
+.sidebar-stats {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sidebar-card {
+    display: grid;
+    gap: 6px;
+    padding: 16px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.56);
+}
+[data-theme="dark"] .sidebar-card {
+    background: rgba(255, 255, 255, 0.03);
+}
+.sidebar-value {
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.sidebar-section {
+    display: grid;
+    gap: 14px;
+    min-height: 0;
+}
+.sidebar-section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+.participant-list {
+    display: grid;
+    gap: 10px;
+    overflow: auto;
+    padding-right: 4px;
+}
+.participant-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.56);
+}
+[data-theme="dark"] .participant-row {
+    background: rgba(255, 255, 255, 0.03);
+}
+.participant-copy {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.sidebar-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.conversation-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--line);
+    background:
+        linear-gradient(180deg, rgba(18, 183, 213, 0.08), transparent 70%);
+}
+[data-theme="dark"] .conversation-header {
+    background:
+        linear-gradient(180deg, rgba(52, 214, 247, 0.1), transparent 70%);
+}
+.conversation-title {
+    margin: 8px 0 0;
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 0.96;
+    letter-spacing: -0.05em;
+}
+.room-copy {
+    margin: 12px 0 0;
+    max-width: 640px;
+    line-height: 1.7;
+}
+.conversation-tools {
+    display: grid;
+    gap: 10px;
+    align-items: start;
+    min-width: min(100%, 320px);
+}
+.search-shell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 0 16px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+    min-height: 56px;
+}
+[data-theme="dark"] .search-shell {
+    background: rgba(255, 255, 255, 0.04);
+}
+.search-shell .search-input {
+    min-height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.search-shell .search-input:focus {
+    box-shadow: none;
+}
+.search-summary {
+    font-size: 0.92rem;
+    text-align: right;
+}
+.conversation-banner {
+    margin: 18px 28px 0;
+}
+.messages {
+    min-height: 0;
+    overflow: auto;
+    padding: 10px 28px 16px;
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+.date-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.date-divider::before,
+.date-divider::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: var(--line);
+}
+.message-row {
+    display: flex;
+    justify-content: flex-start;
+}
+.message-row.mine {
+    justify-content: flex-end;
+}
+.message-cluster {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
+    align-items: flex-end;
+    max-width: min(78%, 760px);
+}
+.message-row.mine .message-cluster {
+    grid-template-columns: minmax(0, 1fr) 44px;
+}
+.message-avatar,
+.message-avatar-spacer {
+    width: 44px;
+    flex: 0 0 44px;
+}
+.message-avatar {
+    height: 44px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    color: var(--accent-ink);
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+}
+.message-avatar-spacer {
+    visibility: hidden;
+}
+.message-content {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+.message-row.mine .message-content {
+    justify-items: end;
+}
+.message-sender {
+    padding: 0 4px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+.message-row.compact .message-sender {
+    display: none;
+}
+.message-card {
+    max-width: 100%;
+    padding: 14px 16px;
+    border-radius: 24px 24px 24px 10px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] .message-card {
+    background: rgba(255, 255, 255, 0.05);
+}
+.message-row.mine .message-card {
+    background: linear-gradient(135deg, rgba(18, 183, 213, 0.18) 0%, rgba(8, 145, 178, 0.22) 100%);
+    border-radius: 24px 24px 10px 24px;
+    border-color: rgba(18, 183, 213, 0.26);
+}
+.message-bubble-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+.message-user {
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+.message-time {
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: nowrap;
+}
+.message-text {
+    margin: 8px 0 0;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.typing-strip {
+    min-height: 40px;
+    padding: 0 28px 4px;
+}
+.typing-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.58);
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+[data-theme="dark"] .typing-pill {
+    background: rgba(255, 255, 255, 0.04);
+}
+.typing-dots {
+    display: inline-flex;
+    gap: 4px;
+}
+.typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+    animation: typingBounce 1s ease infinite;
+}
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.12s;
+}
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.24s;
+}
+.composer {
+    padding: 0 24px 24px;
+}
+.composer-card {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.72);
+}
+[data-theme="dark"] .composer-card {
+    background: rgba(255, 255, 255, 0.04);
+}
+.composer-toolbar,
+.composer-footer,
+.composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.composer-label {
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+.composer-textarea {
+    min-height: 118px;
+    padding: 16px 18px;
+    resize: vertical;
+}
+.composer-count {
+    font-size: 0.9rem;
+}
+.chat-empty-state {
+    display: grid;
+    gap: 12px;
+    place-items: center;
+    min-height: 280px;
+    padding: 28px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.34);
+    text-align: center;
+}
+[data-theme="dark"] .chat-empty-state {
+    background: rgba(255, 255, 255, 0.03);
+}
+.empty-icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-size: 1.3rem;
+    font-weight: 800;
+}
 .restriction-card {
     display: grid;
     gap: 12px;
@@ -603,12 +1115,46 @@ body::before {
         transform: rotate(360deg);
     }
 }
+@keyframes pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(15, 157, 88, 0.28);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(15, 157, 88, 0);
+    }
+}
+@keyframes typingBounce {
+    0%,
+    80%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    40% {
+        transform: translateY(-3px);
+        opacity: 1;
+    }
+}
 @media (max-width: 1024px) {
     .layout {
         grid-template-columns: 1fr;
     }
     .hero-grid {
         grid-template-columns: 1fr;
+    }
+    .chat-frame {
+        grid-template-columns: 1fr;
+    }
+    .chat-sidebar,
+    .chat-stage {
+        min-height: auto;
+    }
+    .participant-list {
+        max-height: none;
+    }
+    .message-cluster {
+        max-width: 100%;
     }
 }
 @media (max-width: 640px) {
@@ -624,12 +1170,65 @@ body::before {
         flex-direction: column;
         align-items: stretch;
     }
+    .shell-chat {
+        width: min(100vw - 20px, 100%);
+        padding-top: 12px;
+    }
     .hero,
     .panel {
         padding: 24px;
     }
     .panel-title {
         font-size: 1.7rem;
+    }
+    .chat-sidebar {
+        padding: 20px;
+    }
+    .conversation-header,
+    .messages,
+    .typing-strip,
+    .composer {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+    .conversation-header {
+        padding-top: 20px;
+    }
+    .conversation-banner {
+        margin-left: 18px;
+        margin-right: 18px;
+    }
+    .sidebar-stats {
+        grid-template-columns: 1fr;
+    }
+    .sidebar-actions,
+    .conversation-tools,
+    .composer-toolbar,
+    .composer-footer,
+    .composer-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-summary {
+        text-align: left;
+    }
+    .message-cluster,
+    .message-row.mine .message-cluster {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 100%;
+    }
+    .message-avatar,
+    .message-avatar-spacer {
+        display: none;
+    }
+    .message-row.mine .message-content {
+        justify-items: stretch;
+    }
+    .message-row.mine {
+        justify-content: stretch;
+    }
+    .message-row.mine .message-card {
+        border-radius: 22px;
     }
 }
 </style>
@@ -784,6 +1383,149 @@ function formatMessageTime(value) {
 
 function normalizeMessages(records) {
     return (records || []).slice().reverse();
+}
+
+function toMessageDate(value) {
+    if (!value || String(value).toLowerCase() === "just now") {
+        return new Date();
+    }
+    const normalized = String(value).replace(" ", "T");
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+    return date;
+}
+
+function getDayKey(value) {
+    const date = toMessageDate(value);
+    if (!date) {
+        return `unknown-${value || "empty"}`;
+    }
+    return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+function formatDayLabel(value) {
+    const date = toMessageDate(value);
+    if (!date) {
+        return "Recent activity";
+    }
+
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const messageDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diff = Math.round((startOfToday - messageDay) / 86400000);
+
+    if (diff === 0) {
+        return "Today";
+    }
+    if (diff === 1) {
+        return "Yesterday";
+    }
+
+    return date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: today.getFullYear() === date.getFullYear() ? undefined : "numeric"
+    });
+}
+
+function formatParticipantTime(value) {
+    const date = toMessageDate(value);
+    if (!date) {
+        return "No activity yet";
+    }
+
+    return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
+}
+
+function getInitial(name) {
+    const trimmed = (name || "?").trim();
+    return trimmed ? trimmed.slice(0, 1).toUpperCase() : "?";
+}
+
+function shortenMessage(value, limit = 56) {
+    const text = (value || "").trim();
+    if (!text) {
+        return "No recent message";
+    }
+    if (text.length <= limit) {
+        return text;
+    }
+    return `${text.slice(0, limit - 1)}...`;
+}
+
+function buildTimeline(messages, currentUser) {
+    const timeline = [];
+    let lastDayKey = "";
+    let previousMessage = null;
+
+    (messages || []).forEach((message, index) => {
+        const dayKey = getDayKey(message.created_at);
+        if (dayKey !== lastDayKey) {
+            timeline.push({
+                type: "divider",
+                key: `divider-${dayKey}-${index}`,
+                label: formatDayLabel(message.created_at)
+            });
+            lastDayKey = dayKey;
+            previousMessage = null;
+        }
+
+        const previousName = (previousMessage?.username || "").toLowerCase();
+        const currentName = (message.username || "").toLowerCase();
+        const compact = previousMessage && previousName === currentName;
+
+        timeline.push({
+            type: "message",
+            key: `${currentName || "member"}-${message.created_at || "now"}-${index}`,
+            compact: Boolean(compact),
+            mine: currentName === (currentUser || "").toLowerCase(),
+            message
+        });
+
+        previousMessage = message;
+    });
+
+    return timeline;
+}
+
+function buildParticipants(messages, currentUser) {
+    const map = new Map();
+
+    (messages || []).forEach((message) => {
+        const username = message.username || "Member";
+        const key = username.toLowerCase();
+        map.set(key, {
+            username,
+            mine: key === (currentUser || "").toLowerCase(),
+            preview: shortenMessage(message.message),
+            created_at: message.created_at
+        });
+    });
+
+    if (currentUser && !map.has(currentUser.toLowerCase())) {
+        map.set(currentUser.toLowerCase(), {
+            username: currentUser,
+            mine: true,
+            preview: "No recent message",
+            created_at: null
+        });
+    }
+
+    return Array.from(map.values()).sort((left, right) => {
+        if (left.mine !== right.mine) {
+            return left.mine ? -1 : 1;
+        }
+        const leftTime = toMessageDate(left.created_at)?.getTime() || 0;
+        const rightTime = toMessageDate(right.created_at)?.getTime() || 0;
+        return rightTime - leftTime;
+    });
 }
 
 function HeroPanel({ viewState }) {
@@ -1023,25 +1765,69 @@ function RestrictedPanel({ state, onLogout }) {
     );
 }
 
-function MessageRow({ message, currentUser }) {
-    const mine = (message.username || "").toLowerCase() === (currentUser || "").toLowerCase();
+function SidebarStat({ label, value, copy }) {
     return e(
         "article",
-        { className: cx("message-row", mine && "mine") },
-        e("div", { className: "message-card" },
-            e("div", { className: "message-user" }, mine ? "You" : message.username || "Member"),
-            e("p", { className: "message-text" }, message.message || ""),
-            e("div", { className: "message-meta" }, formatMessageTime(message.created_at))
+        { className: "sidebar-card" },
+        e("div", { className: "sidebar-label" }, label),
+        e("div", { className: "sidebar-value" }, value),
+        e("div", { className: "sidebar-copy" }, copy)
+    );
+}
+
+function ParticipantRow({ participant }) {
+    return e(
+        "article",
+        { className: "participant-row" },
+        e("div", { className: "participant-avatar", "aria-hidden": "true" }, getInitial(participant.username)),
+        e("div", { style: { minWidth: 0, flex: "1 1 auto" } },
+            e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" } },
+                e("h3", { className: "participant-name" }, participant.username),
+                e("div", { className: "participant-meta" },
+                    participant.mine ? e("span", { className: "participant-pill good" }, "You") : null,
+                    e("span", { className: "participant-pill" }, formatParticipantTime(participant.created_at))
+                )
+            ),
+            e("p", { className: "participant-copy" }, participant.preview)
         )
     );
 }
 
-function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAccessRevoked }) {
+function MessageRow({ message, mine, compact }) {
+    const avatarNode = compact
+        ? e("div", { key: "spacer", className: "message-avatar-spacer", "aria-hidden": "true" })
+        : e("div", { key: "avatar", className: "message-avatar", "aria-hidden": "true" }, getInitial(message.username));
+
+    const contentNode = e(
+        "div",
+        { key: "content", className: "message-content" },
+        e("div", { className: "message-card" },
+            e("div", { className: "message-bubble-head" },
+                e("span", { className: "message-user" }, mine ? "You" : message.username || "Member"),
+                e("span", { className: "message-time" }, formatMessageTime(message.created_at))
+            ),
+            e("p", { className: "message-text" }, message.message || "")
+        )
+    );
+
+    return e(
+        "article",
+        { className: cx("message-row", mine && "mine", compact && "compact") },
+        e(
+            "div",
+            { className: "message-cluster" },
+            mine ? [contentNode, avatarNode] : [avatarNode, contentNode]
+        )
+    );
+}
+
+function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogout, onAccessRevoked, theme, onThemeToggle }) {
     const [messages, setMessages] = useState(normalizeMessages(initialMessages));
     const [query, setQuery] = useState("");
     const [draft, setDraft] = useState("");
     const [busy, setBusy] = useState(false);
     const [typingUser, setTypingUser] = useState("");
+    const [connectionState, setConnectionState] = useState("connecting");
     const socketRef = useRef(null);
     const typingTimer = useRef(null);
     const localTypingTimer = useRef(null);
@@ -1063,6 +1849,20 @@ function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAc
         });
     }, [messages, query]);
 
+    const timeline = useMemo(() => buildTimeline(filteredMessages, currentUser), [filteredMessages, currentUser]);
+    const participants = useMemo(() => buildParticipants(messages, currentUser), [messages, currentUser]);
+    const searchSummary = query.trim()
+        ? `${filteredMessages.length} result${filteredMessages.length === 1 ? "" : "s"} in this room`
+        : `${messages.length} synced message${messages.length === 1 ? "" : "s"} ready to browse`;
+    const connectionLabel = connectionState === "live"
+        ? "Live sync"
+        : connectionState === "reconnecting"
+            ? "Reconnecting"
+            : connectionState === "offline"
+                ? "Offline"
+                : "Connecting";
+    const connectionTone = connectionState === "live" ? "good" : "neutral";
+
     useEffect(() => {
         if (!window.io) {
             return undefined;
@@ -1071,12 +1871,15 @@ function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAc
         socketRef.current = socket;
 
         socket.on("connect", () => {
+            setConnectionState("live");
             setBanner({ tone: "good", message: "Realtime workspace connected." });
         });
         socket.on("system", (payload) => {
+            setConnectionState("live");
             setBanner({ tone: "good", message: payload?.message || "Connected to real-time server." });
         });
         socket.on("connect_error", () => {
+            setConnectionState("reconnecting");
             setBanner({ tone: "error", message: "Realtime connection is retrying." });
         });
         socket.on("new_message", (payload) => {
@@ -1097,6 +1900,7 @@ function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAc
             socket.disconnect();
         });
         socket.on("disconnect", () => {
+            setConnectionState("offline");
             setBanner({ tone: "neutral", message: "Realtime channel disconnected." });
         });
 
@@ -1158,17 +1962,76 @@ function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAc
     }
 
     return e(
-        "section",
-        { className: "surface panel workspace" },
-        e("div", { className: "workspace-header" },
-            e("div", null,
-                e("p", { className: "panel-label" }, "Member workspace"),
-                e("h2", { className: "panel-title", style: { marginTop: "8px" } }, "Realtime room for active members."),
-                e("p", { className: "panel-copy", style: { marginTop: "12px" } }, "Search recent messages, send updates, and watch the connection state in real time.")
+        "div",
+        { className: "chat-frame" },
+        e("aside", { className: "surface chat-sidebar" },
+            e("div", { className: "chat-brand" },
+                e("div", { className: "brand-mark" }, "S"),
+                e("div", { className: "chat-brand-copy" },
+                    e("span", { className: "chat-kicker" }, "Member workspace"),
+                    e("h1", { className: "chat-sidebar-title" }, "Sentinel Access"),
+                    e("span", { className: "chat-sidebar-copy" }, "Private messaging channel")
+                )
             ),
-            e("div", { className: "workspace-meta" },
-                e("span", { className: "chip chip-good" }, "Live"),
-                e("span", { className: "chip chip-neutral" }, currentUser || "Member"),
+            e("section", { className: "chat-user-card" },
+                e("div", { className: "chat-user-head" },
+                    e("div", { className: "avatar-badge", "aria-hidden": "true" }, getInitial(currentUser)),
+                    e("div", null,
+                        e("h2", { className: "chat-user-name" }, currentUser || "Member"),
+                        e("p", { className: "chat-user-copy" }, "Authenticated member session with realtime access enabled.")
+                    )
+                ),
+                e("div", { className: "sidebar-pill-row" },
+                    e("span", { className: `live-pill ${connectionTone}` },
+                        e("span", { className: "live-dot", "aria-hidden": "true" }),
+                        connectionLabel
+                    ),
+                    e("span", { className: "live-pill neutral" }, "Room: General")
+                )
+            ),
+            e("section", { className: "sidebar-stats" },
+                e(SidebarStat, {
+                    label: "Loaded",
+                    value: messages.length,
+                    copy: "Recent messages in sync"
+                }),
+                e(SidebarStat, {
+                    label: "People",
+                    value: participants.length,
+                    copy: "Unique senders in view"
+                }),
+                e(SidebarStat, {
+                    label: "Search",
+                    value: query.trim() ? filteredMessages.length : "Ready",
+                    copy: query.trim() ? "Matches in current room" : "Search is idle"
+                }),
+                e(SidebarStat, {
+                    label: "Composer",
+                    value: draft.length,
+                    copy: "Characters in draft"
+                })
+            ),
+            e("section", { className: "sidebar-section" },
+                e("div", { className: "sidebar-section-head" },
+                    e("div", null,
+                        e("div", { className: "sidebar-label" }, "Recent senders"),
+                        e("div", { className: "sidebar-copy", style: { marginTop: "6px" } }, "Built from the real synced conversation history.")
+                    )
+                ),
+                e("div", { className: "participant-list" },
+                    participants.length
+                        ? participants.map((participant) => e(ParticipantRow, {
+                            key: `${participant.username}-${participant.created_at || "empty"}`,
+                            participant
+                        }))
+                        : e("div", { className: "sidebar-copy" }, "Participants will appear here once the room has activity.")
+                )
+            ),
+            e("div", { className: "sidebar-actions" },
+                e(ThemeToggle, {
+                    theme,
+                    onToggle: onThemeToggle
+                }),
                 e(Button, {
                     id: "logoutBtn",
                     type: "button",
@@ -1177,50 +2040,120 @@ function ChatWorkspace({ initialMessages, currentUser, setBanner, onLogout, onAc
                 }, "Logout")
             )
         ),
-        e("div", { className: "search-row" },
-            e("input", {
-                id: "messageSearch",
-                className: "search-input",
-                value: query,
-                onChange: (event) => setQuery(event.target.value),
-                placeholder: "Search messages or usernames"
-            })
-        ),
-        e("div", { id: "messages", ref: messageListRef, className: "messages" },
-            filteredMessages.length
-                ? filteredMessages.map((message, index) => e(MessageRow, {
-                    key: `${message.username || "member"}-${message.created_at || "now"}-${index}`,
-                    message,
-                    currentUser
-                }))
-                : e("div", { className: "empty-state" }, "No messages match the current search.")
-        ),
-        e("div", { id: "typingIndicator", className: "typing-indicator" }, typingUser ? `${typingUser} is typing...` : ""),
-        e("div", { className: "composer" },
-            e("form", { className: "composer-form", onSubmit: submit },
-                e("textarea", {
-                    id: "msgInput",
-                    className: "composer-textarea",
-                    value: draft,
-                    maxLength: 500,
-                    onChange: (event) => handleDraftChange(event.target.value),
-                    onBlur: () => emitTyping(false),
-                    onKeyDown: (event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                            event.preventDefault();
-                            submit(event);
+        e("section", { className: "surface chat-stage" },
+            e("div", { className: "conversation-header" },
+                e("div", null,
+                    e("div", { className: "conversation-kicker" }, "Member workspace"),
+                    e("h2", { className: "conversation-title" }, "Realtime room for active members."),
+                    e("p", { className: "room-copy" }, "A focused secure channel with searchable history, realtime delivery, and a composer built for fast day-to-day updates."),
+                    e("div", { className: "room-meta", style: { marginTop: "16px" } },
+                        e("span", { className: "room-badge" }, "# general"),
+                        e("span", { className: "room-badge" }, `${participants.length} participant${participants.length === 1 ? "" : "s"}`),
+                        e("span", { className: "room-badge" }, `${messages.length} message${messages.length === 1 ? "" : "s"}`)
+                    )
+                ),
+                e("div", { className: "conversation-tools" },
+                    e("div", { className: "search-shell" },
+                        e("input", {
+                            id: "messageSearch",
+                            className: "search-input",
+                            value: query,
+                            onChange: (event) => setQuery(event.target.value),
+                            placeholder: "Search messages or usernames"
+                        }),
+                        query.trim()
+                            ? e(Button, {
+                                type: "button",
+                                variant: "quiet",
+                                onClick: () => setQuery("")
+                            }, "Clear")
+                            : null
+                    ),
+                    e("div", { className: "search-summary" }, searchSummary)
+                )
+            ),
+            banner?.message
+                ? e("div", {
+                    className: cx("status-banner conversation-banner", banner.tone === "good" ? "good" : banner.tone === "error" ? "error" : "neutral")
+                }, banner.message)
+                : null,
+            e("div", { id: "messages", ref: messageListRef, className: "messages" },
+                timeline.length
+                    ? timeline.map((item) => {
+                        if (item.type === "divider") {
+                            return e("div", { key: item.key, className: "date-divider" }, item.label);
                         }
-                    },
-                    placeholder: "Write a secure update"
-                }),
-                e("div", { className: "status-row" },
-                    e("span", { className: "status-text" }, "Enter sends. Shift+Enter adds a new line."),
-                    e(Button, {
-                        id: "sendBtn",
-                        type: "submit",
-                        loading: busy,
-                        disabled: busy
-                    }, busy ? "Sending..." : "Send message")
+                        return e(MessageRow, {
+                            key: item.key,
+                            message: item.message,
+                            mine: item.mine,
+                            compact: item.compact
+                        });
+                    })
+                    : e("div", { className: "chat-empty-state" },
+                        e("div", { className: "empty-icon", "aria-hidden": "true" }, "#"),
+                        e("h3", { style: { margin: 0, fontFamily: "\"Cabinet Grotesk\", sans-serif", fontSize: "1.6rem" } },
+                            query.trim() ? "No messages match this search." : "The room is ready for the first secure update."
+                        ),
+                        e("p", { className: "empty-state", style: { margin: 0, maxWidth: "420px", lineHeight: 1.7 } },
+                            query.trim()
+                                ? "Try a different keyword or clear the search to return to the full room history."
+                                : "Start the conversation from the composer below. New messages will appear here in realtime for connected members."
+                        )
+                    )
+            ),
+            e("div", { className: "typing-strip" },
+                typingUser
+                    ? e("div", { id: "typingIndicator", className: "typing-pill" },
+                        e("span", { className: "typing-dots", "aria-hidden": "true" },
+                            e("span", null),
+                            e("span", null),
+                            e("span", null)
+                        ),
+                        `${typingUser} is typing...`
+                    )
+                    : e("div", { id: "typingIndicator", className: "typing-indicator" }, "")
+            ),
+            e("div", { className: "composer" },
+                e("form", { className: "composer-form", onSubmit: submit },
+                    e("div", { className: "composer-card" },
+                        e("div", { className: "composer-toolbar" },
+                            e("div", null,
+                                e("div", { className: "composer-label" }, "Write a secure update"),
+                                e("div", { className: "composer-hint", style: { marginTop: "6px" } }, "Enter sends. Shift+Enter creates a new line.")
+                            ),
+                            e("div", { className: "composer-meta" },
+                                e("span", { className: "meta-pill" }, connectionLabel),
+                                e("span", { className: "meta-pill" }, `${draft.length}/500`)
+                            )
+                        ),
+                        e("textarea", {
+                            id: "msgInput",
+                            className: "composer-textarea",
+                            value: draft,
+                            maxLength: 500,
+                            onChange: (event) => handleDraftChange(event.target.value),
+                            onBlur: () => emitTyping(false),
+                            onKeyDown: (event) => {
+                                if (event.key === "Enter" && !event.shiftKey) {
+                                    event.preventDefault();
+                                    submit(event);
+                                }
+                            },
+                            placeholder: "Share an update, decision, or handoff note"
+                        }),
+                        e("div", { className: "composer-footer" },
+                            e("div", { className: "composer-actions" },
+                                e("span", { className: "composer-count" }, query.trim() ? `${filteredMessages.length} filtered result${filteredMessages.length === 1 ? "" : "s"} visible` : "Latest room history is visible above")
+                            ),
+                            e(Button, {
+                                id: "sendBtn",
+                                type: "submit",
+                                loading: busy,
+                                disabled: busy || !draft.trim()
+                            }, busy ? "Sending..." : "Send message")
+                        )
+                    )
                 )
             )
         )
@@ -1267,6 +2200,23 @@ function App() {
         setBanner({ tone: "error", message: "Access revoked. The member stream is now locked." });
     }
 
+    if (viewState === "chat") {
+        return e(
+            "main",
+            { className: "shell shell-chat" },
+            e(ChatWorkspace, {
+                initialMessages: bootstrap.messages || [],
+                currentUser: bootstrap.currentUser || "",
+                banner,
+                setBanner,
+                onLogout: logout,
+                onAccessRevoked: handleAccessRevoked,
+                theme,
+                onThemeToggle: () => setTheme((current) => current === "dark" ? "light" : "dark")
+            })
+        );
+    }
+
     return e(
         "main",
         { className: "shell" },
@@ -1280,7 +2230,7 @@ function App() {
             ),
             e("div", { className: "topbar-actions" },
                 bootstrap.currentUser
-                    ? e("span", { className: cx("chip", viewState === "chat" ? "chip-good" : "chip-neutral") }, `${bootstrap.currentUser} / ${bootstrap.currentRole}`)
+                    ? e("span", { className: "chip chip-neutral" }, `${bootstrap.currentUser} / ${bootstrap.currentRole}`)
                     : e("span", { className: "chip chip-neutral" }, "Guest session"),
                 e(ThemeToggle, {
                     theme,
@@ -1290,20 +2240,12 @@ function App() {
         ),
         e("section", { className: "layout" },
             e(HeroPanel, { viewState }),
-            viewState === "chat"
-                ? e(ChatWorkspace, {
-                    initialMessages: bootstrap.messages || [],
-                    currentUser: bootstrap.currentUser || "",
-                    setBanner,
-                    onLogout: logout,
-                    onAccessRevoked: handleAccessRevoked
+            viewState === "restricted"
+                ? e(RestrictedPanel, {
+                    state: restrictedState,
+                    onLogout: logout
                 })
-                : viewState === "restricted"
-                    ? e(RestrictedPanel, {
-                        state: restrictedState,
-                        onLogout: logout
-                    })
-                    : e(AuthPanel, { setBanner })
+                : e(AuthPanel, { setBanner })
         ),
         e("div", { className: cx("status-banner", banner.tone === "good" ? "good" : banner.tone === "error" ? "error" : "neutral") }, banner.message)
     );
