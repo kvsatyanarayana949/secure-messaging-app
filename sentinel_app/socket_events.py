@@ -6,6 +6,7 @@ from flask_socketio import emit, join_room
 from .auth import get_active_user_record, get_session_value
 from .data import set_user_presence
 from .extensions import socketio
+from .time_utils import serialize_utc_timestamp
 
 
 _connected_user_sids = defaultdict(set)
@@ -13,9 +14,7 @@ _sid_context = {}
 
 
 def _serialize_presence_timestamp(value):
-    if hasattr(value, "isoformat"):
-        return value.isoformat(sep=" ", timespec="seconds")
-    return value
+    return serialize_utc_timestamp(value)
 
 
 def _track_user_connection(user, sid):
