@@ -1,7 +1,7 @@
 {
   "name": "secure-messaging-app-main",
   "version": "1.0.0",
-  "description": "Sentinel is a secure team-messaging demo built to show product thinking, access-control discipline, and production-minded engineering in one portfolio project.",
+  "description": "Sentinel is a role-based realtime messaging demo built to show product thinking, access-control discipline, and production-minded engineering in one portfolio project.",
   "main": "index.js",
   "directories": {
     "doc": "docs",
@@ -29,4 +29,3 @@
     "playwright": "^1.59.1"
   }
 }
-
