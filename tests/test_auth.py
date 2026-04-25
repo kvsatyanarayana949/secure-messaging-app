@@ -163,6 +163,7 @@ def test_messages_success(client, auth_session, mock_db):
     data = response.get_json()
     assert data["status"] == "success"
     assert data["messages"][0]["message"] == "hello world"
+    assert data["messages"][0]["created_at"] == "2026-04-13T10:00:00Z"
 
 
 def test_submit_rejects_too_long_message(client, auth_session):
