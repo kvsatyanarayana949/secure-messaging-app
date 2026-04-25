@@ -87,8 +87,8 @@ def test_login_user_not_found(client, mock_db):
         "password": "Password123"
     })
 
-    assert response.status_code == 404
-    assert response.get_json()["message"] == "User not found"
+    assert response.status_code == 401
+    assert response.get_json()["message"] == "Invalid username or password"
 
 
 def test_login_banned_user(client, mock_db, sample_user_record):
@@ -114,7 +114,7 @@ def test_login_wrong_password(client, mock_db, sample_user_record):
     })
 
     assert response.status_code == 401
-    assert response.get_json()["message"] == "Wrong password"
+    assert response.get_json()["message"] == "Invalid username or password"
     assert mock_db.committed is True
 
 
@@ -130,13 +130,13 @@ def test_login_success(client, mock_db, sample_user_record):
     data = response.get_json()
     assert data["status"] == "success"
     assert data["username"] == "normaluser"
-    assert data["role"] == "user"
+    assert data["role"] == "member"
     assert mock_db.committed is True
 
     with client.session_transaction() as sess:
         assert sess["user_id"] == sample_user_record["id"]
         assert sess["username"] == sample_user_record["username"]
-        assert sess["role"] == sample_user_record["role"]
+        assert sess["role"] == "member"
 
 
 def test_submit_rejects_empty_message(client, auth_session):
