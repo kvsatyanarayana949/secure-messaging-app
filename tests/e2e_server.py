@@ -112,7 +112,7 @@ class MemoryCursor:
             return
 
         if self.last_query.startswith("insert into users"):
-            username, email, password_hash, role, status, is_banned, is_deleted = self.last_params
+            username, email, password_hash, role, status, is_banned, is_deleted, created_at = self.last_params
             if any(user["username"] == username or user["email"] == email for user in USERS):
                 raise Exception("Duplicate entry")
             USERS.append({
@@ -126,16 +126,16 @@ class MemoryCursor:
                 "is_online": False,
                 "is_deleted": is_deleted,
                 "last_seen": None,
-                "created_at": "2026-04-18 12:10:00",
+                "created_at": created_at,
                 "last_login_at": None,
             })
             return
 
         if self.last_query.startswith("update users set last_login_at"):
-            ip_address, user_id = self.last_params
+            last_login_at, ip_address, user_id = self.last_params
             for user in USERS:
                 if user["id"] == user_id:
-                    user["last_login_at"] = "2026-04-18 12:15:00"
+                    user["last_login_at"] = last_login_at
                     user["last_login_ip"] = ip_address
             return
 
@@ -160,12 +160,12 @@ class MemoryCursor:
             return
 
         if self.last_query.startswith("insert into messages"):
-            message, sender_id = self.last_params
+            message, sender_id, created_at = self.last_params
             sender = next(user for user in USERS if user["id"] == sender_id)
             MESSAGES.insert(0, {
                 "username": sender["username"],
                 "message": message,
-                "created_at": "just now",
+                "created_at": created_at,
             })
             return
 
@@ -200,14 +200,14 @@ class MemoryCursor:
                 self.rowcount = 0
             return
 
-        if self.last_query.startswith("update users set status=%s, is_banned=true, is_online=false, last_seen=now() where username=%s and is_deleted=false"):
-            status, username = self.last_params
+        if self.last_query.startswith("update users set status=%s, is_banned=true, is_online=false, last_seen=%s where username=%s and is_deleted=false"):
+            status, last_seen, username = self.last_params
             user = next((user for user in USERS if user["username"] == username and not user["is_deleted"]), None)
             if user:
                 user["status"] = status
                 user["is_banned"] = True
                 user["is_online"] = False
-                user["last_seen"] = "2026-04-18 12:20:00"
+                user["last_seen"] = last_seen
             else:
                 self.rowcount = 0
             return
@@ -224,14 +224,14 @@ class MemoryCursor:
             return
 
         if self.last_query.startswith("insert into logs"):
-            event_type, user_id, username, ip_address, status = self.last_params
+            event_type, user_id, username, ip_address, status, created_at = self.last_params
             LOGS.append({
                 "event_type": event_type,
                 "user_id": user_id,
                 "username": username,
                 "ip_address": ip_address,
                 "status": status,
-                "created_at": "2026-04-18 12:20:00",
+                "created_at": created_at,
             })
             return
 
@@ -281,14 +281,14 @@ def fetch_users():
     return [public_user(user) for user in USERS if not user["is_deleted"]]
 
 
-def write_log(cur, event_type, username=None, status="info", user_id=None):
+def write_log(cur, event_type, username=None, status="info", user_id=None, timestamp=None):
     LOGS.append({
         "event_type": event_type,
         "user_id": user_id,
         "username": username,
         "ip_address": "127.0.0.1",
         "status": status,
-        "created_at": "2026-04-18 12:20:00",
+        "created_at": timestamp or "2026-04-18 12:20:00",
     })
 
 
