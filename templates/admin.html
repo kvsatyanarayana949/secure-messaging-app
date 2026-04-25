@@ -650,6 +650,24 @@ function ThemeToggle({ theme, onToggle }) {
     );
 }
 
+function parseTimestamp(value) {
+    if (!value) {
+        return null;
+    }
+    const text = String(value).trim();
+    if (!text) {
+        return null;
+    }
+    const normalized = /(?:Z|[+-]\d{2}:\d{2})$/i.test(text)
+        ? text
+        : `${text.replace(" ", "T")}Z`;
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+    return date;
+}
+
 function formatLastSeen(record) {
     if (record.is_online) {
         return "Live now";
@@ -657,9 +675,8 @@ function formatLastSeen(record) {
     if (!record.last_seen) {
         return "No presence recorded";
     }
-    const normalized = String(record.last_seen).replace(" ", "T");
-    const date = new Date(normalized);
-    if (Number.isNaN(date.getTime())) {
+    const date = parseTimestamp(record.last_seen);
+    if (!date) {
         return record.last_seen;
     }
     return date.toLocaleString([], {
