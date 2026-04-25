@@ -133,11 +133,19 @@ def test_socketio_typing_broadcasts_to_other_members(app, socketio, dummy_cursor
             receiver.disconnect()
 
 
-def test_socketio_rejects_admin_connections(app, socketio, dummy_cursor):
+def test_socketio_allows_admin_presence_connections(app, socketio, dummy_cursor):
     admin_client = _admin_client(app, dummy_cursor)
     socket_client = socketio.test_client(app, flask_test_client=admin_client)
 
-    assert socket_client.is_connected() is False
+    try:
+        assert socket_client.is_connected() is True
+        received = socket_client.get_received()
+        assert any(event["name"] == "system" for event in received)
+        system_events = [event for event in received if event["name"] == "system"]
+        assert system_events[0]["args"][0]["message"] == "Connected to admin presence channel"
+    finally:
+        if socket_client.is_connected():
+            socket_client.disconnect()
 
 
 def test_socketio_rejects_banned_member_connections(app, socketio, dummy_cursor):
