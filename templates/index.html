@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sentinel | Secure Messaging Workspace</title>
+<title>Sentinel | Role-Based Messaging Workspace</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -1269,7 +1269,7 @@ async function refreshCsrfToken() {
     });
     const payload = await parseJson(response);
     if (!response.ok || !payload.csrf_token) {
-        throw new Error(payload.message || "Could not refresh the secure form token");
+        throw new Error(payload.message || "Could not refresh the form token");
     }
     csrfToken = payload.csrf_token;
     const meta = document.querySelector("meta[name='csrf-token']");
@@ -1530,14 +1530,14 @@ function buildParticipants(messages, currentUser) {
 
 function HeroPanel({ viewState }) {
     const detail = viewState === "chat"
-        ? "The secure room is live for active member accounts, while admin controls remain isolated."
+        ? "The member room is live for active member accounts, while admin controls remain isolated."
         : viewState === "restricted"
             ? "Role checks are enforced before the workspace renders, so access states come from session and data, not mock screens."
             : "Sentinel separates authentication, moderation, and live messaging so teams can collaborate without giving admins message visibility.";
     return e(
         "section",
         { className: "surface hero" },
-        e("div", { className: "eyebrow" }, "Private collaboration"),
+        e("div", { className: "eyebrow" }, "Role-aware collaboration"),
         e("h1", null, "Messaging with a real ", e("span", { className: "accent-text" }, "permission boundary"), "."),
         e("p", { className: "hero-copy" }, detail),
         e("div", { className: "hero-grid" },
@@ -1597,7 +1597,7 @@ function AuthPanel({ setBanner }) {
         try {
             setBusy(true);
             setFeedback({ tone: "", message: "" });
-            setBanner({ tone: "neutral", message: mode === "login" ? "Checking your secure session..." : "Creating your workspace access..." });
+            setBanner({ tone: "neutral", message: mode === "login" ? "Checking your session..." : "Creating your workspace access..." });
 
             if (mode === "register") {
                 const payload = await postForm("/register", {
@@ -1722,7 +1722,7 @@ function AuthPanel({ setBanner }) {
                 }, feedback.message)
                 : null,
             e("div", { className: "form-meta" },
-                e("span", { className: "helper-text" }, mode === "register" ? "New accounts start as active members." : "Press Enter to submit securely."),
+                e("span", { className: "helper-text" }, mode === "register" ? "New accounts start as active members." : "Press Enter to submit."),
                 e(Button, {
                     id: "submitAuthBtn",
                     type: "submit",
@@ -1734,7 +1734,7 @@ function AuthPanel({ setBanner }) {
         e("ul", { className: "security-list" },
             e("li", null, e("span", { className: "dot" }), e("span", null, "Only active member sessions can load the realtime chat workspace.")),
             e("li", null, e("span", { className: "dot" }), e("span", null, "Admins authenticate normally but stay inside an access-control console.")),
-            e("li", null, e("span", { className: "dot" }), e("span", null, "Form requests are CSRF-protected and the client refreshes secure tokens automatically."))
+            e("li", null, e("span", { className: "dot" }), e("span", null, "Form requests are CSRF-protected and the client refreshes form tokens automatically."))
         )
     );
 }
@@ -1833,6 +1833,7 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
     const localTypingTimer = useRef(null);
     const messageListRef = useRef(null);
     const accessRevokedRef = useRef(onAccessRevoked);
+    const accessRevokedStateRef = useRef(false);
 
     useEffect(() => {
         accessRevokedRef.current = onAccessRevoked;
@@ -1869,6 +1870,7 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
         }
         const socket = window.io({ transports: ["websocket", "polling"] });
         socketRef.current = socket;
+        accessRevokedStateRef.current = false;
 
         socket.on("connect", () => {
             setConnectionState("live");
@@ -1896,10 +1898,14 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
         });
         socket.on("access_revoked", (payload) => {
             const message = payload?.message || "Your access has been revoked.";
+            accessRevokedStateRef.current = true;
             accessRevokedRef.current(message);
             socket.disconnect();
         });
         socket.on("disconnect", () => {
+            if (accessRevokedStateRef.current) {
+                return;
+            }
             setConnectionState("offline");
             setBanner({ tone: "neutral", message: "Realtime channel disconnected." });
         });
@@ -1970,7 +1976,7 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
                 e("div", { className: "chat-brand-copy" },
                     e("span", { className: "chat-kicker" }, "Member workspace"),
                     e("h1", { className: "chat-sidebar-title" }, "Sentinel Access"),
-                    e("span", { className: "chat-sidebar-copy" }, "Private messaging channel")
+                    e("span", { className: "chat-sidebar-copy" }, "Member messaging channel")
                 )
             ),
             e("section", { className: "chat-user-card" },
@@ -2045,7 +2051,7 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
                 e("div", null,
                     e("div", { className: "conversation-kicker" }, "Member workspace"),
                     e("h2", { className: "conversation-title" }, "Realtime room for active members."),
-                    e("p", { className: "room-copy" }, "A focused secure channel with searchable history, realtime delivery, and a composer built for fast day-to-day updates."),
+                    e("p", { className: "room-copy" }, "A focused member room with searchable history, realtime delivery, and a composer built for fast day-to-day updates."),
                     e("div", { className: "room-meta", style: { marginTop: "16px" } },
                         e("span", { className: "room-badge" }, "# general"),
                         e("span", { className: "room-badge" }, `${participants.length} participant${participants.length === 1 ? "" : "s"}`),
@@ -2093,7 +2099,7 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
                     : e("div", { className: "chat-empty-state" },
                         e("div", { className: "empty-icon", "aria-hidden": "true" }, "#"),
                         e("h3", { style: { margin: 0, fontFamily: "\"Cabinet Grotesk\", sans-serif", fontSize: "1.6rem" } },
-                            query.trim() ? "No messages match this search." : "The room is ready for the first secure update."
+                            query.trim() ? "No messages match this search." : "The room is ready for the first update."
                         ),
                         e("p", { className: "empty-state", style: { margin: 0, maxWidth: "420px", lineHeight: 1.7 } },
                             query.trim()
@@ -2119,7 +2125,7 @@ function ChatWorkspace({ initialMessages, currentUser, banner, setBanner, onLogo
                     e("div", { className: "composer-card" },
                         e("div", { className: "composer-toolbar" },
                             e("div", null,
-                                e("div", { className: "composer-label" }, "Write a secure update"),
+                                e("div", { className: "composer-label" }, "Write an update"),
                                 e("div", { className: "composer-hint", style: { marginTop: "6px" } }, "Enter sends. Shift+Enter creates a new line.")
                             ),
                             e("div", { className: "composer-meta" },
@@ -2169,7 +2175,7 @@ function App() {
         if (bootstrap.viewState === "restricted") {
             return { tone: "neutral", message: bootstrap.restrictedState?.message || "This route is restricted." };
         }
-        return { tone: "neutral", message: "Authenticate to enter the secure workspace." };
+        return { tone: "neutral", message: "Authenticate to enter the workspace." };
     });
     const [viewState, setViewState] = useState(bootstrap.viewState || "auth");
     const [restrictedState, setRestrictedState] = useState(bootstrap.restrictedState || {});
@@ -2225,7 +2231,7 @@ function App() {
                 e("div", { className: "brand-mark" }, "S"),
                 e("div", { className: "brand-meta" },
                     e("h1", { className: "brand-title" }, "Sentinel Access"),
-                    e("strong", null, "Secure messaging workspace")
+                    e("strong", null, "Role-based messaging workspace")
                 )
             ),
             e("div", { className: "topbar-actions" },
