@@ -28,6 +28,7 @@ from .data import (
 )
 from .extensions import limiter, socketio
 from .socket_events import disconnect_member_sessions
+from .time_utils import TIMESTAMP_FIELDS, serialize_utc_timestamp, utc_now_naive
 
 
 def serialize_records(records):
@@ -35,12 +36,16 @@ def serialize_records(records):
     for record in records:
         next_record = {}
         for key, value in record.items():
-            if hasattr(value, "isoformat"):
-                next_record[key] = value.isoformat(sep=" ", timespec="seconds")
+            if key in TIMESTAMP_FIELDS or hasattr(value, "isoformat"):
+                next_record[key] = serialize_utc_timestamp(value)
             else:
                 next_record[key] = value
         serialized.append(next_record)
     return serialized
+
+
+def serialize_timestamp(value):
+    return serialize_utc_timestamp(value)
 
 
 def build_restriction_content(user):
@@ -182,10 +187,11 @@ def register_routes(app):
         try:
             cur = get_cursor()
             hashed = generate_password_hash(password)
+            created_at = utc_now_naive()
             cur.execute(
-                "INSERT INTO users (username, email, password_hash, role, status, is_banned, is_deleted) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                (username, email, hashed, MEMBER_ROLE, ACTIVE_STATUS, False, False),
+                "INSERT INTO users (username, email, password_hash, role, status, is_banned, is_deleted, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                (username, email, hashed, MEMBER_ROLE, ACTIVE_STATUS, False, False, created_at),
             )
             write_log(cur, "REGISTER_SUCCESS", username=username, status="success")
             commit_or_rollback(success=True)
@@ -239,9 +245,10 @@ def register_routes(app):
             session["username"] = user["username"]
             session["role"] = user["role"]
 
+            last_login_at = utc_now_naive()
             cur.execute(
-                "UPDATE users SET last_login_at=NOW(), last_login_ip=%s WHERE id=%s",
-                (request.remote_addr, user["id"]),
+                "UPDATE users SET last_login_at=%s, last_login_ip=%s WHERE id=%s",
+                (last_login_at, request.remote_addr, user["id"]),
             )
             write_log(cur, "LOGIN_SUCCESS", username=username, user_id=user["id"], status="success")
             commit_or_rollback(success=True)
@@ -293,12 +300,13 @@ def register_routes(app):
             return jsonify({"status": "error", "message": "Invalid message"}), 400
 
         safe_msg = html.escape(msg)
+        created_at = utc_now_naive()
         cur = None
         try:
             cur = get_cursor()
             cur.execute(
-                "INSERT INTO messages (message, sender_id) VALUES (%s,%s)",
-                (safe_msg, get_session_value("user_id")),
+                "INSERT INTO messages (message, sender_id, created_at) VALUES (%s,%s,%s)",
+                (safe_msg, get_session_value("user_id"), created_at),
             )
             write_log(
                 cur,
@@ -314,7 +322,7 @@ def register_routes(app):
                 {
                     "username": get_session_value("username"),
                     "message": safe_msg,
-                    "created_at": "just now",
+                    "created_at": serialize_timestamp(created_at),
                 },
                 room="members",
             )
@@ -375,10 +383,11 @@ def register_routes(app):
             if user["role"] == "admin":
                 return jsonify({"status": "error", "message": "Cannot ban another admin"}), 400
 
+            last_seen = utc_now_naive()
             cur.execute(
-                "UPDATE users SET status=%s, is_banned=TRUE, is_online=FALSE, last_seen=NOW() "
+                "UPDATE users SET status=%s, is_banned=TRUE, is_online=FALSE, last_seen=%s "
                 "WHERE username=%s AND is_deleted=FALSE",
-                (BANNED_STATUS, username),
+                (BANNED_STATUS, last_seen, username),
             )
             cur.execute(
                 "SELECT username, email, role, status, is_banned, is_online, last_seen, created_at, last_login_at "
