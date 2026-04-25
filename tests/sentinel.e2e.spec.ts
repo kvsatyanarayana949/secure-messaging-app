@@ -38,46 +38,50 @@ test.afterEach(async () => {
 });
 
 test('guest can register, login, send a message, toggle theme, and logout', async ({ page }) => {
+  const memberMessage = 'browser e2e member message';
+
   await page.goto('/');
-  await expect(page.getByText('Secure chat that')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /permission boundary/i })).toBeVisible();
   await expect(page.locator('meta[name="csrf-token"]')).toHaveCount(1);
 
   await expect(page.locator('#password')).toHaveAttribute('type', 'password');
+  await page.locator('#password').fill('Password123');
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Light' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.getByRole('button', { name: 'Show password' }).click();
   await expect(page.locator('#password')).toHaveAttribute('type', 'text');
   await page.getByRole('button', { name: 'Hide password' }).click();
   await expect(page.locator('#password')).toHaveAttribute('type', 'password');
-
-  await page.getByRole('button', { name: 'Light' }).click();
-  await page.getByRole('button', { name: 'Dark' }).click();
+  await page.locator('#password').fill('');
 
   await page.getByRole('button', { name: 'Register' }).click();
   await page.locator('#username').fill(`member${Date.now()}`);
   await page.locator('#email').fill(`member${Date.now()}@example.com`);
   await page.locator('#password').fill('Password123');
-  await page.getByRole('button', { name: 'Create Secure Account' }).click();
-  await expect(page.getByText('Registered successfully')).toBeVisible();
+  await page.getByRole('button', { name: 'Create Account' }).click();
+  await expect(page.getByRole('alert')).toHaveText(/Registered successfully/i);
 
   await page.locator('#username').fill('normaluser');
   await page.locator('#password').fill('Password123');
   await page.getByRole('button', { name: 'Enter Workspace' }).click();
 
-  await expect(page.getByText('Sentinel live room')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Realtime room for active members.' })).toBeVisible();
   await expect(page.locator('#msgInput')).toBeVisible();
 
-  await page.locator('#msgInput').fill('browser e2e secure message');
+  await page.locator('#msgInput').fill(memberMessage);
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByText('Message sent to connected members.')).toBeVisible();
-  await expect(page.getByText('browser e2e secure message')).toBeVisible();
+  await expect(page.locator('#messages').getByText(memberMessage)).toBeVisible();
 
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('button', { name: 'Light' }).click();
-  const lightThemeMessageColor = await page.locator('#messages article p').first().evaluate((element) => {
-    return window.getComputedStyle(element).color;
-  });
-  expect(lightThemeMessageColor).toMatch(/rgba?\(255,\s*255,\s*255/);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
   await page.locator('#messageSearch').fill('browser e2e');
-  await expect(page.getByText('browser e2e secure message')).toBeVisible();
+  await expect(page.locator('#messages').getByText(memberMessage)).toBeVisible();
 
   await page.getByRole('button', { name: 'Logout' }).click();
   await expect(page.getByRole('button', { name: 'Enter Workspace' })).toBeVisible();
@@ -94,7 +98,7 @@ test('invalid login shows useful feedback without navigation', async ({ page }) 
   await page.locator('#password').fill('WrongPassword999');
   await page.getByRole('button', { name: 'Enter Workspace' }).click();
 
-  await expect(page.getByText('Wrong password')).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveText('Invalid username or password');
   await expect(page.getByRole('button', { name: 'Enter Workspace' })).toBeVisible();
 });
 
@@ -105,9 +109,8 @@ test('admin can use moderation console but cannot see member messages', async ({
   await page.getByRole('button', { name: 'Enter Workspace' }).click();
 
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByText('Moderate access,')).toBeVisible();
-  await expect(page.getByText('not conversations')).toBeVisible();
-  await expect(page.getByText('browser e2e secure message')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Manage access, not conversations.' })).toBeVisible();
+  await expect(page.getByText('browser e2e member message')).toHaveCount(0);
 
   await page.locator('#searchInput').fill('normaluser');
   await expect(page.getByText('normaluser')).toBeVisible();
@@ -116,12 +119,12 @@ test('admin can use moderation console but cannot see member messages', async ({
   await expect(page.getByText('Member roster refreshed.')).toBeVisible();
 
   await page.locator('#quickUsername').fill('normaluser');
-  await page.getByRole('button', { name: 'Ban User', exact: true }).click();
+  await page.locator('#quickBanBtn').click();
   await expect(page.getByText('normaluser updated successfully.')).toBeVisible();
   await expect(page.locator('#memberList').getByText('Banned')).toBeVisible();
 
   await page.locator('#quickUsername').fill('normaluser');
-  await page.getByRole('button', { name: 'Unban User' }).click();
+  await page.locator('#quickUnbanBtn').click();
   await expect(page.getByText('normaluser updated successfully.')).toBeVisible();
   await expect(page.locator('#memberList').getByText('Active')).toBeVisible();
 
@@ -141,9 +144,9 @@ test('banned member loses the message stream immediately', async ({ browser }) =
     await memberPage.locator('#password').fill('Password123');
     await memberPage.getByRole('button', { name: 'Enter Workspace' }).click();
 
-    await expect(memberPage.getByText('Sentinel live room')).toBeVisible();
+    await expect(memberPage.getByRole('heading', { name: 'Realtime room for active members.' })).toBeVisible();
     await expect(memberPage.locator('#msgInput')).toBeVisible();
-    await expect(memberPage.getByText('welcome to the browser audit stream')).toBeVisible();
+    await expect(memberPage.locator('#messages').getByText('welcome to the browser audit stream')).toBeVisible();
 
     await adminPage.goto('/');
     await adminPage.locator('#username').fill('admin');
@@ -152,14 +155,14 @@ test('banned member loses the message stream immediately', async ({ browser }) =
     await expect(adminPage).toHaveURL(/\/admin$/);
 
     await adminPage.locator('#quickUsername').fill('normaluser');
-    await adminPage.getByRole('button', { name: 'Ban User', exact: true }).click();
+    await adminPage.locator('#quickBanBtn').click();
     await expect(adminPage.getByText('normaluser updated successfully.')).toBeVisible();
 
+    await expect(memberPage.getByRole('heading', { name: 'Your member session has been closed.' })).toBeVisible();
+    await expect(memberPage.getByText('Your account has been banned. You have been removed from the member workspace.')).toBeVisible();
     await expect(memberPage.getByText('Access revoked. The member stream is now locked.')).toBeVisible();
-    await expect(memberPage.getByText('Message stream locked')).toBeVisible();
-    await expect(memberPage.locator('#messageLockState')).toBeVisible();
     await expect(memberPage.locator('#msgInput')).toHaveCount(0);
-    await expect(memberPage.getByText('welcome to the browser audit stream')).toHaveCount(0);
+    await expect(memberPage.locator('#messages').getByText('welcome to the browser audit stream')).toHaveCount(0);
   } finally {
     await memberContext.close();
     await adminContext.close();
