@@ -1369,14 +1369,28 @@ function EyeIcon({ visible }) {
     );
 }
 
-function formatMessageTime(value) {
-    if (!value || String(value).toLowerCase() === "just now") {
-        return "now";
+function parseTimestamp(value) {
+    if (!value) {
+        return null;
     }
-    const normalized = String(value).replace(" ", "T");
+    const text = String(value).trim();
+    if (!text) {
+        return null;
+    }
+    const normalized = /(?:Z|[+-]\d{2}:\d{2})$/i.test(text)
+        ? text
+        : `${text.replace(" ", "T")}Z`;
     const date = new Date(normalized);
     if (Number.isNaN(date.getTime())) {
-        return value;
+        return null;
+    }
+    return date;
+}
+
+function formatMessageTime(value) {
+    const date = toMessageDate(value);
+    if (!date) {
+        return "";
     }
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
@@ -1386,15 +1400,7 @@ function normalizeMessages(records) {
 }
 
 function toMessageDate(value) {
-    if (!value || String(value).toLowerCase() === "just now") {
-        return new Date();
-    }
-    const normalized = String(value).replace(" ", "T");
-    const date = new Date(normalized);
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-    return date;
+    return parseTimestamp(value);
 }
 
 function getDayKey(value) {
@@ -1483,7 +1489,7 @@ function buildTimeline(messages, currentUser) {
 
         timeline.push({
             type: "message",
-            key: `${currentName || "member"}-${message.created_at || "now"}-${index}`,
+            key: `${currentName || "member"}-${message.created_at || "unknown"}-${index}`,
             compact: Boolean(compact),
             mine: currentName === (currentUser || "").toLowerCase(),
             message
