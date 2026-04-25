@@ -1,8 +1,7 @@
-from datetime import UTC, datetime
-
-from flask import request
+from flask import g, has_app_context, request
 
 from .extensions import mysql
+from .time_utils import utc_now_naive
 
 
 MEMBER_ROLE = "member"
@@ -13,7 +12,15 @@ BANNED_STATUS = "banned"
 
 
 def get_connection():
-    return mysql.connection
+    connection = mysql.connection
+    if has_app_context() and not getattr(g, "_db_timezone_is_utc", False):
+        cur = connection.cursor()
+        try:
+            cur.execute("SET time_zone = '+00:00'")
+        finally:
+            cur.close()
+        g._db_timezone_is_utc = True
+    return connection
 
 
 def get_cursor():
@@ -114,7 +121,7 @@ def set_user_presence(user_id, is_online):
                 (user_id,),
             )
         else:
-            timestamp = datetime.now(UTC).replace(microsecond=0, tzinfo=None)
+            timestamp = utc_now_naive()
             cur.execute(
                 "UPDATE users SET is_online = FALSE, last_seen = %s WHERE id = %s AND is_deleted = FALSE",
                 (timestamp, user_id),
@@ -130,10 +137,11 @@ def set_user_presence(user_id, is_online):
     return timestamp
 
 
-def write_log(cur, event_type, username=None, status="info", user_id=None):
+def write_log(cur, event_type, username=None, status="info", user_id=None, timestamp=None):
+    created_at = timestamp or utc_now_naive()
     cur.execute(
-        "INSERT INTO logs (event_type, user_id, username, ip_address, status) VALUES (%s,%s,%s,%s,%s)",
-        (event_type, user_id, username, request.remote_addr, status),
+        "INSERT INTO logs (event_type, user_id, username, ip_address, status, created_at) VALUES (%s,%s,%s,%s,%s,%s)",
+        (event_type, user_id, username, request.remote_addr, status, created_at),
     )
 
 
