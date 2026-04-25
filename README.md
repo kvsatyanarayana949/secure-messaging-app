@@ -1,6 +1,6 @@
 # Sentinel
 
-Sentinel is a secure team-messaging demo built to show product thinking, access-control discipline, and production-minded engineering in one portfolio project.
+Sentinel is a role-based realtime messaging demo built to show product thinking, access-control discipline, and production-minded engineering in one portfolio project.
 
 ![Member workspace preview](docs/visuals/member-workspace-preview.svg)
 ![Admin console preview](docs/visuals/admin-console-preview.svg)
@@ -13,7 +13,7 @@ Sentinel is a secure team-messaging demo built to show product thinking, access-
 
 ## Core Features
 
-- Secure username/email/password authentication with CSRF-protected form handling.
+- Username/email/password authentication with CSRF-protected form handling.
 - Role-based routing: members enter the chat workspace while admins enter a dedicated moderation console.
 - Real-time member chat powered by Socket.IO.
 - Member-only message access: admins cannot read or send chat messages.
@@ -92,7 +92,7 @@ This starts:
 
 ## Testing
 
-Run the full automated suite:
+Run the backend and integration tests:
 
 ```powershell
 py -m pytest
@@ -101,13 +101,14 @@ py -m pytest
 Run the browser E2E audit:
 
 ```powershell
+npm ci
 npm run test:e2e
 ```
 
-Current status:
+CI source of truth:
 
-- Backend/integration: `50 passed`
-- Browser E2E: `3 passed`
+- `.github/workflows/playwright.yml` runs `python -m pytest` and `npm run test:e2e` on pushes and pull requests.
+- Hard-coded pass counts were removed so the README does not drift out of date again.
 
 ## Architecture At A Glance
 
@@ -190,6 +191,5 @@ Fastest production-minded route:
 - Add pagination and richer filtering to the admin roster.
 - Add password reset and profile settings.
 - Replace bootstrap SQL with database migrations.
-- Add CI automation for tests and linting.
+- Add linting and type checks to the existing CI workflow.
 - Deploy a public demo URL for recruiter-friendly review.
-
