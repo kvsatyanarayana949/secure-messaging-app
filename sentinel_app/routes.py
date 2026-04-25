@@ -49,7 +49,7 @@ def build_restriction_content(user):
         return {
             "eyebrow": "Authentication required",
             "title": "Sign in to continue.",
-            "message": "Use an active member account to open the secure workspace.",
+            "message": "Use an active member account to open the member workspace.",
             "action_label": "",
             "action_href": "",
         }
