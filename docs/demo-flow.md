@@ -7,7 +7,7 @@ This is the fastest way to present Sentinel to a recruiter, hiring manager, or i
 Show that the project is not just a chat demo. The real value is the combination of:
 
 - role-separated access
-- secure request handling
+- CSRF-protected form handling
 - realtime behavior
 - product-minded UI
 - deployment/testing readiness
@@ -18,7 +18,7 @@ Show that the project is not just a chat demo. The real value is the combination
 
 Say:
 
-`Sentinel is a secure internal messaging demo where members and admins do not share the same workspace. That product boundary is the main design idea.`
+`Sentinel is a role-based messaging demo where members and admins do not share the same workspace. That product boundary is the main design idea.`
 
 What to show:
 
@@ -67,7 +67,7 @@ What to show:
 
 Say:
 
-`The important design choice is that admin accounts can moderate members but still cannot read or send private chat messages.`
+`The important design choice is that admin accounts can moderate members but still cannot read or send member chat messages.`
 
 What to show:
 
@@ -85,4 +85,3 @@ Fresh DB bootstrap:
 ## Best Ending Line
 
 `This project is meant to show that I can think about product UX, security boundaries, realtime features, deployment, and testability together instead of treating them as separate concerns.`
-
