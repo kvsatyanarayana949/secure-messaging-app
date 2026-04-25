@@ -27,8 +27,11 @@ USERS = [
         "email": "admin@sentinel.local",
         "password_hash": generate_password_hash("AdminPass123!"),
         "role": "admin",
+        "status": "active",
         "is_banned": False,
+        "is_online": False,
         "is_deleted": False,
+        "last_seen": None,
         "created_at": "2026-04-18 12:00:00",
         "last_login_at": None,
     },
@@ -38,8 +41,11 @@ USERS = [
         "email": "normal@example.com",
         "password_hash": generate_password_hash("Password123"),
         "role": "user",
+        "status": "active",
         "is_banned": False,
+        "is_online": False,
         "is_deleted": False,
+        "last_seen": None,
         "created_at": "2026-04-18 12:01:00",
         "last_login_at": None,
     },
@@ -59,7 +65,10 @@ def public_user(user):
         "username": user["username"],
         "email": user["email"],
         "role": user["role"],
+        "status": user["status"],
         "is_banned": user["is_banned"],
+        "is_online": user.get("is_online", False),
+        "last_seen": user.get("last_seen"),
         "created_at": user["created_at"],
         "last_login_at": user["last_login_at"],
     }
@@ -79,24 +88,31 @@ class MemoryCursor:
         self.last_params = params or ()
         self.rowcount = 1
 
-        if self.last_query.startswith("select id, username, role, is_banned, is_deleted from users where id="):
+        if self.last_query.startswith("select id, username, role, status, is_banned, is_deleted, is_online, last_seen from users where id="):
             user_id = self.last_params[0]
             self.one = next(({
                 "id": user["id"],
                 "username": user["username"],
                 "role": user["role"],
+                "status": user["status"],
                 "is_banned": user["is_banned"],
                 "is_deleted": user["is_deleted"],
+                "is_online": user.get("is_online", False),
+                "last_seen": user.get("last_seen"),
             } for user in USERS if user["id"] == user_id), None)
+            if not self.one:
+                self.rowcount = 0
             return
 
-        if self.last_query.startswith("select id, username"):
+        if self.last_query.startswith("select id, username, email, password_hash, role, status, is_banned, is_deleted from users where username="):
             username = self.last_params[0]
-            self.one = next((deepcopy(user) for user in USERS if user["username"] == username), None)
+            self.one = next((deepcopy(user) for user in USERS if user["username"] == username and not user["is_deleted"]), None)
+            if not self.one:
+                self.rowcount = 0
             return
 
         if self.last_query.startswith("insert into users"):
-            username, email, password_hash, role, is_banned, is_deleted = self.last_params
+            username, email, password_hash, role, status, is_banned, is_deleted = self.last_params
             if any(user["username"] == username or user["email"] == email for user in USERS):
                 raise Exception("Duplicate entry")
             USERS.append({
@@ -105,8 +121,11 @@ class MemoryCursor:
                 "email": email,
                 "password_hash": password_hash,
                 "role": role,
+                "status": status,
                 "is_banned": is_banned,
+                "is_online": False,
                 "is_deleted": is_deleted,
+                "last_seen": None,
                 "created_at": "2026-04-18 12:10:00",
                 "last_login_at": None,
             })
@@ -118,6 +137,26 @@ class MemoryCursor:
                 if user["id"] == user_id:
                     user["last_login_at"] = "2026-04-18 12:15:00"
                     user["last_login_ip"] = ip_address
+            return
+
+        if self.last_query.startswith("update users set is_online = true where id = %s and is_deleted = false"):
+            user_id = self.last_params[0]
+            user = next((user for user in USERS if user["id"] == user_id and not user["is_deleted"]), None)
+            if user:
+                user["is_online"] = True
+                user["last_seen"] = None
+            else:
+                self.rowcount = 0
+            return
+
+        if self.last_query.startswith("update users set is_online = false, last_seen = %s where id = %s and is_deleted = false"):
+            last_seen, user_id = self.last_params
+            user = next((user for user in USERS if user["id"] == user_id and not user["is_deleted"]), None)
+            if user:
+                user["is_online"] = False
+                user["last_seen"] = last_seen
+            else:
+                self.rowcount = 0
             return
 
         if self.last_query.startswith("insert into messages"):
@@ -138,28 +177,48 @@ class MemoryCursor:
                 self.rowcount = 0
             return
 
-        if self.last_query.startswith("select role from users"):
+        if self.last_query.startswith("select id, username, role, status, is_banned, is_deleted from users where username="):
             username = self.last_params[0]
             user = next((user for user in USERS if user["username"] == username and not user["is_deleted"]), None)
-            self.one = {"role": user["role"]} if user else None
+            self.one = {
+                "id": user["id"],
+                "username": user["username"],
+                "role": user["role"],
+                "status": user["status"],
+                "is_banned": user["is_banned"],
+                "is_deleted": user["is_deleted"],
+            } if user else None
             if not user:
                 self.rowcount = 0
             return
 
-        if self.last_query.startswith("update users set is_banned=true"):
+        if self.last_query.startswith("select username, email, role, status, is_banned, is_online, last_seen, created_at, last_login_at from users where username="):
             username = self.last_params[0]
             user = next((user for user in USERS if user["username"] == username and not user["is_deleted"]), None)
+            self.one = deepcopy(public_user(user)) if user else None
+            if not user:
+                self.rowcount = 0
+            return
+
+        if self.last_query.startswith("update users set status=%s, is_banned=true, is_online=false, last_seen=now() where username=%s and is_deleted=false"):
+            status, username = self.last_params
+            user = next((user for user in USERS if user["username"] == username and not user["is_deleted"]), None)
             if user:
+                user["status"] = status
                 user["is_banned"] = True
+                user["is_online"] = False
+                user["last_seen"] = "2026-04-18 12:20:00"
             else:
                 self.rowcount = 0
             return
 
-        if self.last_query.startswith("update users set is_banned=false"):
-            username = self.last_params[0]
+        if self.last_query.startswith("update users set status=%s, is_banned=false where username=%s and is_deleted=false"):
+            status, username = self.last_params
             user = next((user for user in USERS if user["username"] == username and not user["is_deleted"]), None)
             if user:
+                user["status"] = status
                 user["is_banned"] = False
+                user["is_online"] = False
             else:
                 self.rowcount = 0
             return
