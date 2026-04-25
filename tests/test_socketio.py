@@ -68,6 +68,7 @@ def test_socketio_multiple_member_clients_can_connect(app, socketio, dummy_curso
 def test_socketio_emit_new_message_broadcasts_to_connected_member_clients(app, socketio, dummy_cursor):
     member_one = _member_client(app, dummy_cursor)
     member_two = _member_client(app, dummy_cursor)
+    created_at = "2026-04-25T19:30:00Z"
 
     client_one = socketio.test_client(app, flask_test_client=member_one)
     client_two = socketio.test_client(app, flask_test_client=member_two)
@@ -81,7 +82,7 @@ def test_socketio_emit_new_message_broadcasts_to_connected_member_clients(app, s
             {
                 "username": "normaluser",
                 "message": "hello from test",
-                "created_at": "just now",
+                "created_at": created_at,
             },
         )
 
@@ -96,11 +97,11 @@ def test_socketio_emit_new_message_broadcasts_to_connected_member_clients(app, s
 
         assert payload_one["username"] == "normaluser"
         assert payload_one["message"] == "hello from test"
-        assert payload_one["created_at"] == "just now"
+        assert payload_one["created_at"] == created_at
 
         assert payload_two["username"] == "normaluser"
         assert payload_two["message"] == "hello from test"
-        assert payload_two["created_at"] == "just now"
+        assert payload_two["created_at"] == created_at
     finally:
         if client_one.is_connected():
             client_one.disconnect()
