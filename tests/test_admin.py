@@ -64,6 +64,8 @@ def test_admin_can_get_users(client, admin_session, mock_db, sample_users):
     assert len(data["users"]) == 2
     assert data["users"][0]["username"] == "adminuser"
     assert data["users"][1]["username"] == "normaluser"
+    assert data["users"][0]["created_at"] == "2026-04-13T09:00:00Z"
+    assert data["users"][0]["last_login_at"] == "2026-04-13T10:00:00Z"
 
 
 def test_admin_can_get_logs(client, admin_session, mock_db, sample_logs):
@@ -84,6 +86,7 @@ def test_admin_can_get_logs(client, admin_session, mock_db, sample_logs):
     assert len(data["logs"]) == 2
     assert data["logs"][0]["event_type"] == "LOGIN_SUCCESS"
     assert data["logs"][1]["event_type"] == "MESSAGE_SENT"
+    assert data["logs"][0]["created_at"] == "2026-04-13T10:00:00Z"
 
 
 def test_admin_cannot_ban_self(client, admin_session):
