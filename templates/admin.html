@@ -527,7 +527,7 @@ async function refreshCsrfToken() {
     });
     const payload = await parseJson(response);
     if (!response.ok || !payload.csrf_token) {
-        throw new Error(payload.message || "Could not refresh the secure form token");
+        throw new Error(payload.message || "Could not refresh the form token");
     }
     csrfToken = payload.csrf_token;
     const meta = document.querySelector("meta[name='csrf-token']");
